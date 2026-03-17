@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import {
@@ -17,11 +17,32 @@ export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isChecking, setIsChecking] = useState(true);
+
+  useEffect(() => {
+    const checkSession = async () => {
+      try {
+        const role = await AsyncStorage.getItem("userRole");
+        if (role) {
+          router.replace("/(drawer)/(tabs)");
+        }
+      } catch (e) {
+        console.error("Error comprobando sesión", e);
+      } finally {
+        setIsChecking(false);
+      }
+    };
+    checkSession();
+  }, []);
 
   useShake(() => {
     setEmail("");
     setPassword("");
   });
+
+  if (isChecking) {
+    return null; // O un ActivityIndicator si lo prefieres, pero null evita flasheos
+  }
 
   const iniciarSesion = async () => {
     try {
@@ -123,14 +144,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#B45309",
+    color: "#BF7C48",
     textAlign: "center",
     marginBottom: 20,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F5F5F4",
+    backgroundColor: "#F6F6F6",
     borderRadius: 10,
     marginBottom: 15,
     paddingHorizontal: 10,
@@ -140,7 +161,7 @@ const styles = StyleSheet.create({
   icon: { marginRight: 10 },
   input: { flex: 1, height: 50, color: "#444" },
   btnEntrar: {
-    backgroundColor: "#F59E0B",
+    backgroundColor: "#F9B701",
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: "center",
@@ -151,7 +172,7 @@ const styles = StyleSheet.create({
 
   opcionesExtras: { marginTop: 20 },
   btnSecundario: { alignItems: "center", paddingVertical: 10 },
-  btnSecundarioText: { color: "#B45309", fontWeight: "bold", fontSize: 15 },
+  btnSecundarioText: { color: "#BF7C48", fontWeight: "bold", fontSize: 15 },
 
   divisor: { flexDirection: "row", alignItems: "center", marginVertical: 15 },
   linea: { flex: 1, height: 1, backgroundColor: "#D6D3D1" },
@@ -159,7 +180,7 @@ const styles = StyleSheet.create({
 
   btnInvitado: { alignItems: "center", paddingVertical: 10 },
   btnInvitadoText: {
-    color: "#57534E",
+    color: "#6D5540",
     textDecorationLine: "underline",
     fontSize: 15,
   },

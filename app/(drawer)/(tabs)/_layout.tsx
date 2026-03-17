@@ -6,9 +6,9 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false, // El drawer ya muestra el header
-        tabBarActiveTintColor: "#B45309",
-        tabBarInactiveTintColor: "#78716C",
-        tabBarStyle: { height: 60, paddingBottom: 10, paddingTop: 5 }
+        tabBarActiveTintColor: "#BF7C48",
+        tabBarInactiveTintColor: "#6D5540",
+        tabBarStyle: { height: 60, paddingBottom: 10, paddingTop: 5, backgroundColor: "#F6F6F6" }
       }}
     >
       <Tabs.Screen

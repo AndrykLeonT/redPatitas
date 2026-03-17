@@ -35,7 +35,7 @@ export default function Mapa() {
   if (!location) {
     return (
       <View style={styles.loaderContainer}>
-        <ActivityIndicator size="large" color="#B45309" />
+        <ActivityIndicator size="large" color="#BF7C48" />
         <Text style={styles.loaderText}>Obteniendo tu ubicación en el mapa...</Text>
       </View>
     );
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F5F5F4'
   },
-  loaderText: { marginTop: 10, color: '#78716C' },
+  loaderText: { marginTop: 10, color: '#6D5540' },
   container: {
     flex: 1,
   },

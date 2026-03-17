@@ -118,7 +118,7 @@ export default function HomeScreen() {
     <View style={styles.bg}>
       {!location && !errorMsg && (
         <View style={styles.loaderContainer}>
-          <ActivityIndicator size="large" color="#B45309" />
+          <ActivityIndicator size="large" color="#BF7C48" />
           <Text style={styles.loaderText}>Obteniendo ubicación...</Text>
         </View>
       )}
@@ -142,9 +142,9 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: "#F5F5F4" },
+  bg: { flex: 1, backgroundColor: "#F6F6F6" },
   loaderContainer: { padding: 20, alignItems: 'center' },
-  loaderText: { marginTop: 10, color: '#78716C' },
+  loaderText: { marginTop: 10, color: '#6D5540' },
   errorContainer: { 
     flexDirection: 'row', 
     backgroundColor: '#FEE2E2', 
@@ -154,7 +154,7 @@ const styles = StyleSheet.create({
     alignItems: 'center' 
   },
   errorText: { color: '#B91C1C', marginLeft: 10, flex: 1, fontSize: 13 },
-  container: { padding: 15, paddingTop: 0 },
+  container: { padding: 15, paddingTop: 15 },
 
   card: {
     backgroundColor: "#FFF",
@@ -183,12 +183,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   nombre: { fontSize: 20, fontWeight: "bold", color: "#1C1917" },
-  detalles: { fontSize: 14, color: "#78716C", marginTop: 2 },
+  detalles: { fontSize: 14, color: "#6D5540", marginTop: 2 },
   btnVerMas: {
-    backgroundColor: "#FEF3C7",
+    backgroundColor: "#F9B701",
     paddingVertical: 8,
     paddingHorizontal: 15,
     borderRadius: 10,
   },
-  btnVerMasText: { color: "#D97706", fontWeight: "bold" },
+  btnVerMasText: { color: "#FFF", fontWeight: "bold" },
 });

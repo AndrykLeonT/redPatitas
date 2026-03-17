@@ -6,12 +6,16 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import { View, Text, Image, StyleSheet } from "react-native";
 import { useTheme } from "../../context/ThemeContext";
+import { AVATARES } from "../../utils/avatars";
 
 function CustomDrawerContent(props: any) {
   const { role, router, isDarkMode, toggleTheme } = props;
   
   const handleLogout = async () => {
     await AsyncStorage.removeItem("userRole");
+    await AsyncStorage.removeItem("userName");
+    await AsyncStorage.removeItem("userAvatar");
+    await AsyncStorage.removeItem("userEmail");
     router.replace("/");
   };
 
@@ -21,13 +25,13 @@ function CustomDrawerContent(props: any) {
   return (
     <DrawerContentScrollView {...props} style={{ backgroundColor: isDarkMode ? "#1F2937" : "#FFFFFF" }}>
       <View style={[styles.header, { backgroundColor: bgColor }]}>
-        {role === "user" ? (
+        {role !== "guest" && role != null ? (
           <>
             <Image 
-              source={{ uri: "https://randomuser.me/api/portraits/men/32.jpg" }} 
+              source={(AVATARES as any)[props.userAvatar || 'default']} 
               style={styles.profilePic} 
             />
-            <Text style={[styles.userName, { color: textColor }]}>Tec La Paz</Text>
+            <Text style={[styles.userName, { color: textColor }]}>{props.userName || 'Usuario'}</Text>
           </>
         ) : (
           <>
@@ -48,27 +52,52 @@ function CustomDrawerContent(props: any) {
       />
 
       <DrawerItem
-        label="Cerrar sesión"
+        label={role === "guest" || !role ? "Iniciar sesión" : "Cerrar sesión"}
         labelStyle={{ color: isDarkMode ? "#F9FAFB" : "#1C1917" }}
-        icon={({ color }) => <Ionicons name="log-out-outline" size={24} color={isDarkMode ? "#F9FAFB" : color} />}
+        icon={({ color }) => <Ionicons name={role === "guest" || !role ? "log-in-outline" : "log-out-outline"} size={24} color={isDarkMode ? "#F9FAFB" : color} />}
         onPress={handleLogout}
       />
     </DrawerContentScrollView>
   );
 }
 
+import { useFocusEffect } from "expo-router";
+import { useCallback } from "react";
+
 export default function DrawerLayout() {
   const [role, setRole] = useState<string | null>(null);
+  const [userName, setUserName] = useState<string | null>(null);
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const router = useRouter();
   const { isDarkMode, toggleTheme } = useTheme();
 
-  useEffect(() => {
-    const fetchRole = async () => {
-      const storedRole = await AsyncStorage.getItem("userRole");
-      setRole(storedRole);
-    };
-    fetchRole();
-  }, []);
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
+
+      const fetchData = async () => {
+        try {
+          const storedRole = await AsyncStorage.getItem("userRole");
+          const storedName = await AsyncStorage.getItem("userName");
+          const storedAvatar = await AsyncStorage.getItem("userAvatar");
+          
+          if (isActive) {
+            setRole(storedRole);
+            setUserName(storedName);
+            setUserAvatar(storedAvatar);
+          }
+        } catch (e) {
+          console.error("Error al leer datos del Drawer", e);
+        }
+      };
+
+      fetchData();
+
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
 
   return (
     <Drawer
@@ -76,18 +105,20 @@ export default function DrawerLayout() {
         <CustomDrawerContent 
           {...props} 
           role={role} 
+          userName={userName}
+          userAvatar={userAvatar}
           router={router} 
           isDarkMode={isDarkMode} 
           toggleTheme={toggleTheme} 
         />
       )}
       screenOptions={{
-        headerStyle: { backgroundColor: isDarkMode ? "#111827" : "#B45309" },
+        headerStyle: { backgroundColor: isDarkMode ? "#111827" : "#BF7C48" },
         headerTintColor: "#fff",
-        drawerActiveTintColor: isDarkMode ? "#F59E0B" : "#B45309",
-        drawerInactiveTintColor: isDarkMode ? "#D1D5DB" : "#444",
+        drawerActiveTintColor: isDarkMode ? "#F9B701" : "#BF7C48",
+        drawerInactiveTintColor: isDarkMode ? "#D1D5DB" : "#6D5540",
         drawerStyle: {
-          backgroundColor: isDarkMode ? "#1F2937" : "#FFFFFF"
+          backgroundColor: isDarkMode ? "#1F2937" : "#F6F6F6"
         }
       }}
     >
