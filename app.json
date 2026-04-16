@@ -5,6 +5,11 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
+    "splash": {
+      "image": "./assets/images/splash_Screen.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAFAFA"
+    },
     "scheme": "proyecto",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
@@ -38,10 +43,10 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
+          "image": "./assets/images/splash_Screen.png",
+          "imageWidth": 400,
           "resizeMode": "contain",
-          "backgroundColor": "#ffffff",
+          "backgroundColor": "#FAFAFA",
           "dark": {
             "backgroundColor": "#000000"
           }
