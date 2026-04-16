@@ -23,12 +23,17 @@ export default function LoginScreen() {
   const [isChecking, setIsChecking] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Comprueba si hay sesión guardada al abrir la app
+  // ✅ Comprueba si hay sesión guardada — solo redirige si el rol es válido
+  // (no "guest" sin sesión activa, y no un string vacío por bug de escritura)
   useEffect(() => {
     const checkSession = async () => {
       try {
         const role = await AsyncStorage.getItem("userRole");
-        if (role) {
+
+        // ✅ Guard: solo redirige si existe un rol válido y no nulo.
+        // Evita el loop cuando el logout limpia AsyncStorage pero el
+        // componente todavía no se ha desmontado y el effect se re-ejecuta.
+        if (role && role.trim() !== "") {
           router.replace("/(drawer)/(tabs)");
         }
       } catch (e) {
@@ -56,7 +61,6 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      // Obtenemos todos los usuarios (en apps grandes sería mejor usar queries de Firebase)
       const snapshot = await get(ref(db, "usuarios"));
 
       if (!snapshot.exists()) {
@@ -69,7 +73,6 @@ export default function LoginScreen() {
       let usuarioEncontrado: any = null;
       let uidEncontrado: string = "";
 
-      // Buscamos coincidencia de correo o nombre de usuario
       Object.entries(usuarios).forEach(([key, user]: [string, any]) => {
         if (
           user.correo?.toLowerCase() === email.toLowerCase() ||
@@ -92,12 +95,15 @@ export default function LoginScreen() {
         return;
       }
 
-      // Persiste la sesión localmente
-      await AsyncStorage.setItem("userRole", usuarioEncontrado.rol);
-      await AsyncStorage.setItem("userName", usuarioEncontrado.nombreCompleto);
-      await AsyncStorage.setItem("userAvatar", usuarioEncontrado.fotoPerfil);
-      await AsyncStorage.setItem("userEmail", usuarioEncontrado.correo);
-      await AsyncStorage.setItem("userId", uidEncontrado);
+      // ✅ Persiste sesión — fotoPerfil se guarda como nombre de archivo,
+      // que es exactamente la key que usa AVATARES en avatars.ts
+      await AsyncStorage.multiSet([
+        ["userRole", usuarioEncontrado.rol],
+        ["userName", usuarioEncontrado.nombreCompleto],
+        ["userAvatar", usuarioEncontrado.fotoPerfil],   // ej: "perro_perfil.jpg"
+        ["userEmail", usuarioEncontrado.correo],
+        ["userId", uidEncontrado],
+      ]);
 
       router.replace("/(drawer)/(tabs)");
     } catch (e: any) {
@@ -117,7 +123,7 @@ export default function LoginScreen() {
       await AsyncStorage.setItem("userRole", "guest");
       router.replace("/(drawer)/(tabs)");
     } catch (e) {
-      console.error("Error al guardar sesión", e);
+      console.error("Error al guardar sesión de invitado", e);
     }
   };
 

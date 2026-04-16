@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import { ref, set } from "firebase/database";
+import { get, ref, set } from "firebase/database";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -60,16 +60,39 @@ export default function RegistroScreen() {
 
     setIsLoading(true);
     try {
-      // 1️⃣ Generamos un UID único para el usuario de manera manual
-      const uid = "USR-" + Date.now().toString() + Math.random().toString(36).substring(2, 9);
+      const emailNormalizado = email.trim().toLowerCase();
+      const usernameNormalizado = username.trim().toLowerCase();
 
-      // 2️⃣  Guarda el perfil en Realtime Database con la contraseña
+      // 1️⃣ Verifica que no exista correo o nombre de usuario repetido
+      const snapshot = await get(ref(db, "usuarios"));
+      if (snapshot.exists()) {
+        const usuarios = snapshot.val();
+        const existeDuplicado = Object.values(usuarios).some((user: any) => {
+          return (
+            user?.correo?.toLowerCase() === emailNormalizado ||
+            user?.nombreUsuario?.toLowerCase() === usernameNormalizado
+          );
+        });
+
+        if (existeDuplicado) {
+          Alert.alert(
+            "Error",
+            "El correo o nombre de usuario ya está registrado."
+          );
+          return;
+        }
+      }
+
+      // 2️⃣ Genera un id simple y guarda perfil en Realtime Database
+      const uid =
+        "USR-" + Date.now().toString() + Math.random().toString(36).substring(2, 9);
+
       const nuevoUsuario: Usuario = {
         idAuth: uid,
         nombreCompleto: nombre,
         nombreUsuario: username,
         celular: telefono,
-        correo: email,
+        correo: emailNormalizado,
         contraseña: password,
         fotoPerfil,
         rol,
@@ -80,11 +103,11 @@ export default function RegistroScreen() {
       };
       await set(ref(db, "usuarios/" + uid), nuevoUsuario);
 
-      // 3️⃣  Persiste la sesión localmente
+      // 3️⃣ Persiste la sesión localmente
       await AsyncStorage.setItem("userRole", rol);
       await AsyncStorage.setItem("userName", nombre);
       await AsyncStorage.setItem("userAvatar", fotoPerfil);
-      await AsyncStorage.setItem("userEmail", email);
+      await AsyncStorage.setItem("userEmail", emailNormalizado);
       await AsyncStorage.setItem("userId", uid);
 
       router.replace("/(drawer)/(tabs)");
@@ -99,7 +122,7 @@ export default function RegistroScreen() {
   return (
     <ImageBackground
       source={{
-        uri: "https://images.unsplash.com/photo-1548199973-03cce0bbc87b",
+        uri: "../assets/images/background_background_Registro.jpg",
       }}
       style={styles.background}
     >

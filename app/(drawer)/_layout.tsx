@@ -13,9 +13,6 @@ import { useTheme } from "../../context/ThemeContext";
 import { AVATARES } from "../../utils/avatars";
 
 // ─── Helper: resuelve el source de imagen de forma segura ─────────────────────
-// fotoPerfil guarda el nombre exacto del asset, p.ej. "perro_perfil.jpg".
-// AVATARES debe tener ese mismo string como key apuntando al require().
-// Si no hay match, cae al "default" en lugar de fallar silenciosamente.
 function resolverAvatar(fotoPerfil: string | null) {
   if (!fotoPerfil) return (AVATARES as any)["default"];
   const source = (AVATARES as any)[fotoPerfil];
@@ -24,7 +21,16 @@ function resolverAvatar(fotoPerfil: string | null) {
 
 // ─── Drawer content ────────────────────────────────────────────────────────────
 function CustomDrawerContent(props: any) {
-  const { role, userAvatar, userName, router, isDarkMode, toggleTheme } = props;
+  const { role, userAvatar, userName, isDarkMode, toggleTheme, onSessionChange } = props;
+
+  // ✅ useRouter() directamente aquí — contexto de navegación correcto
+  const router = useRouter();
+
+  const isGuest = role === "guest" || !role;
+
+  const handleLoginRedirect = () => {
+    router.replace("/");
+  };
 
   const handleLogout = async () => {
     await AsyncStorage.multiRemove([
@@ -34,6 +40,11 @@ function CustomDrawerContent(props: any) {
       "userEmail",
       "userId",
     ]);
+
+    // Notifica al DrawerLayout para que limpie su estado local
+    onSessionChange?.();
+
+    // Volvemos al login raíz sin despachar acciones POP/DISMISS no soportadas
     router.replace("/");
   };
 
@@ -49,6 +60,7 @@ function CustomDrawerContent(props: any) {
       <View style={[styles.header, { backgroundColor: bgColor }]}>
         {role !== "guest" && role != null ? (
           <>
+            {/* ✅ Avatar cargado desde AVATARES usando el nombre guardado en AsyncStorage */}
             <Image source={avatarSource} style={styles.profilePic} />
             <Text style={[styles.userName, { color: textColor }]}>
               {userName || "Usuario"}
@@ -92,18 +104,16 @@ function CustomDrawerContent(props: any) {
       />
 
       <DrawerItem
-        label={role === "guest" || !role ? "Iniciar sesión" : "Cerrar sesión"}
+        label={isGuest ? "Iniciar sesión" : "Cerrar sesión"}
         labelStyle={{ color: isDarkMode ? "#F9FAFB" : "#1C1917" }}
         icon={({ color }) => (
           <Ionicons
-            name={
-              role === "guest" || !role ? "log-in-outline" : "log-out-outline"
-            }
+            name={isGuest ? "log-in-outline" : "log-out-outline"}
             size={24}
             color={isDarkMode ? "#F9FAFB" : color}
           />
         )}
-        onPress={handleLogout}
+        onPress={isGuest ? handleLoginRedirect : handleLogout}
       />
     </DrawerContentScrollView>
   );
@@ -114,7 +124,6 @@ export default function DrawerLayout() {
   const [role, setRole] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
-  const router = useRouter();
   const { isDarkMode, toggleTheme } = useTheme();
   const appState = useRef(AppState.currentState);
 
@@ -133,12 +142,20 @@ export default function DrawerLayout() {
     }
   }, []);
 
+  // ✅ Limpia el estado local inmediatamente cuando el usuario hace logout,
+  // sin esperar a que el componente se desmonte y remonte
+  const handleSessionChange = useCallback(() => {
+    setRole(null);
+    setUserName(null);
+    setUserAvatar(null);
+  }, []);
+
   // Carga inicial
   useEffect(() => {
     fetchSession();
   }, [fetchSession]);
 
-  // Re-lee cuando la app vuelve de background (cubre login → drawer sin re-montar)
+  // Re-lee cuando la app vuelve de background
   useEffect(() => {
     const subscription = AppState.addEventListener(
       "change",
@@ -155,7 +172,8 @@ export default function DrawerLayout() {
     return () => subscription.remove();
   }, [fetchSession]);
 
-  // Re-lee cuando el drawer gana foco dentro del stack
+  // ✅ Re-lee cuando el drawer gana foco — cubre el caso de login → drawer
+  // donde el componente ya estaba montado y no se re-monta
   useFocusEffect(
     useCallback(() => {
       fetchSession();
@@ -170,9 +188,9 @@ export default function DrawerLayout() {
           role={role}
           userName={userName}
           userAvatar={userAvatar}
-          router={router}
           isDarkMode={isDarkMode}
           toggleTheme={toggleTheme}
+          onSessionChange={handleSessionChange}
         />
       )}
       screenOptions={{
