@@ -30,10 +30,12 @@ export default function LoginScreen() {
       try {
         const role = await AsyncStorage.getItem("userRole");
 
-        // ✅ Guard: solo redirige si existe un rol válido y no nulo.
-        // Evita el loop cuando el logout limpia AsyncStorage pero el
-        // componente todavía no se ha desmontado y el effect se re-ejecuta.
-        if (role && role.trim() !== "") {
+        if (
+          role &&
+          role.trim() !== "" &&
+          role !== "guest" &&
+          role !== "login"
+        ) {
           router.replace("/(drawer)/(tabs)");
         }
       } catch (e) {

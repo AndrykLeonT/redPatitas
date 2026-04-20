@@ -26,25 +26,25 @@ function CustomDrawerContent(props: any) {
   // ✅ useRouter() directamente aquí — contexto de navegación correcto
   const router = useRouter();
 
-  const isGuest = role === "guest" || !role;
+  const isGuest = role === "guest" || role === "login" || !role;
 
-  const handleLoginRedirect = () => {
+  const handleLoginRedirect = async () => {
+    await AsyncStorage.setItem("userRole", "login");
     router.replace("/");
   };
 
   const handleLogout = async () => {
     await AsyncStorage.multiRemove([
-      "userRole",
       "userName",
       "userAvatar",
       "userEmail",
       "userId",
     ]);
+    await AsyncStorage.setItem("userRole", "login");
 
-    // Notifica al DrawerLayout para que limpie su estado local
-    onSessionChange?.();
-
-    // Volvemos al login raíz sin despachar acciones POP/DISMISS no soportadas
+    // Limpiamos los datos y redirigimos de inmediato.
+    // NO llamamos a onSessionChange() aquí porque el cambio de estado de React
+    // puede cancelar/interrumpir la orden de router.replace("/")
     router.replace("/");
   };
 
