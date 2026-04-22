@@ -26,6 +26,7 @@ export default function RegistroScreen() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
+  const [fechaNacimiento, setFechaNacimiento] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [rol, setRol] = useState<"Dueño" | "Refugio">("Dueño");
@@ -37,6 +38,7 @@ export default function RegistroScreen() {
     setUsername("");
     setEmail("");
     setTelefono("");
+    setFechaNacimiento("");
     setPassword("");
     setConfirmPassword("");
     setRol("Dueño");
@@ -44,8 +46,7 @@ export default function RegistroScreen() {
   });
 
   const registrarUsuario = async () => {
-    // ── Validaciones ──────────────────────────────────────────────────────────
-    if (!nombre || !username || !email || !password || !telefono) {
+    if (!nombre || !username || !email || !password || !telefono || !fechaNacimiento) {
       Alert.alert("Error", "Por favor completa todos los campos requeridos.");
       return;
     }
@@ -57,13 +58,18 @@ export default function RegistroScreen() {
       Alert.alert("Error", "La contraseña debe tener al menos 6 caracteres.");
       return;
     }
+    // Validar formato de fecha AAAA-MM-DD
+    const fechaRegex = /^\d{4}-\d{2}-\d{2}$/;
+    if (!fechaRegex.test(fechaNacimiento.trim())) {
+      Alert.alert("Error", "La fecha de nacimiento debe tener el formato AAAA-MM-DD.");
+      return;
+    }
 
     setIsLoading(true);
     try {
       const emailNormalizado = email.trim().toLowerCase();
       const usernameNormalizado = username.trim().toLowerCase();
 
-      // 1️⃣ Verifica que no exista correo o nombre de usuario repetido
       const snapshot = await get(ref(db, "usuarios"));
       if (snapshot.exists()) {
         const usuarios = snapshot.val();
@@ -75,15 +81,11 @@ export default function RegistroScreen() {
         });
 
         if (existeDuplicado) {
-          Alert.alert(
-            "Error",
-            "El correo o nombre de usuario ya está registrado."
-          );
+          Alert.alert("Error", "El correo o nombre de usuario ya está registrado.");
           return;
         }
       }
 
-      // 2️⃣ Genera un id simple y guarda perfil en Realtime Database
       const uid =
         "USR-" + Date.now().toString() + Math.random().toString(36).substring(2, 9);
 
@@ -96,6 +98,8 @@ export default function RegistroScreen() {
         contraseña: password,
         fotoPerfil,
         rol,
+        fechaNacimiento: fechaNacimiento.trim(),
+        fechaRegistro: new Date().toISOString(),
         metricas: {
           numMascotas: 0,
           numPublicaciones: 0,
@@ -103,12 +107,13 @@ export default function RegistroScreen() {
       };
       await set(ref(db, "usuarios/" + uid), nuevoUsuario);
 
-      // 3️⃣ Persiste la sesión localmente
-      await AsyncStorage.setItem("userRole", rol);
-      await AsyncStorage.setItem("userName", nombre);
-      await AsyncStorage.setItem("userAvatar", fotoPerfil);
-      await AsyncStorage.setItem("userEmail", emailNormalizado);
-      await AsyncStorage.setItem("userId", uid);
+      await AsyncStorage.multiSet([
+        ["userRole", rol],
+        ["userName", nombre],
+        ["userAvatar", fotoPerfil],
+        ["userEmail", emailNormalizado],
+        ["userId", uid],
+      ]);
 
       router.replace("/(drawer)/(tabs)");
     } catch (e: any) {
@@ -121,9 +126,7 @@ export default function RegistroScreen() {
 
   return (
     <ImageBackground
-      source={{
-        uri: "../assets/images/background_background_Registro.jpg",
-      }}
+      source={require("../assets/images/background_Registro.jpg")}
       style={styles.background}
     >
       <ScrollView
@@ -132,7 +135,7 @@ export default function RegistroScreen() {
       >
         <View style={styles.card}>
           <Pressable onPress={() => router.back()} style={styles.btnAtras}>
-            <Ionicons name="arrow-back" size={24} color="#BF7C48" />
+            <Ionicons name="arrow-back" size={24} color="#FF8C42" />
           </Pressable>
 
           <Text style={styles.title}>Únete a la Manada</Text>
@@ -207,6 +210,18 @@ export default function RegistroScreen() {
             />
           </View>
 
+          <View style={styles.inputContainer}>
+            <Ionicons name="calendar-outline" size={20} color="#78716C" style={styles.icon} />
+            <TextInput
+              placeholder="Fecha de nacimiento (AAAA-MM-DD)"
+              style={styles.input}
+              value={fechaNacimiento}
+              onChangeText={setFechaNacimiento}
+              keyboardType="numeric"
+              maxLength={10}
+            />
+          </View>
+
           <Text style={styles.labelRol}>¿Cómo usarás la app?</Text>
           <View style={styles.rolContainer}>
             {["Dueño", "Refugio"].map((opcion) => (
@@ -250,7 +265,7 @@ export default function RegistroScreen() {
           </View>
 
           <Pressable
-            style={styles.btnRegistrar}
+            style={[styles.btnRegistrar, isLoading && { opacity: 0.7 }]}
             onPress={registrarUsuario}
             disabled={isLoading}
           >
@@ -276,8 +291,8 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   btnAtras: { marginBottom: 10, alignSelf: "flex-start" },
-  title: { fontSize: 26, fontWeight: "bold", color: "#BF7C48", marginBottom: 5 },
-  subtitle: { fontSize: 14, color: "#6D5540", marginBottom: 10 },
+  title: { fontSize: 26, fontWeight: "bold", color: "#FF8C42", marginBottom: 5 },
+  subtitle: { fontSize: 14, color: "#4F6D7A", marginBottom: 10 },
   avatarScroll: { flexDirection: "row", marginBottom: 20 },
   avatarContainer: {
     marginRight: 10,
@@ -286,7 +301,7 @@ const styles = StyleSheet.create({
     borderRadius: 35,
     overflow: "hidden",
   },
-  avatarSelected: { borderColor: "#F9B701" },
+  avatarSelected: { borderColor: "#FF8C42" },
   avatarImg: { width: 60, height: 60, borderRadius: 30 },
   inputContainer: {
     flexDirection: "row",
@@ -303,7 +318,7 @@ const styles = StyleSheet.create({
   labelRol: {
     fontSize: 14,
     fontWeight: "bold",
-    color: "#6D5540",
+    color: "#4F6D7A",
     marginBottom: 10,
     marginTop: 5,
   },
@@ -322,11 +337,11 @@ const styles = StyleSheet.create({
     marginHorizontal: 3,
     backgroundColor: "#F6F6F6",
   },
-  btnRolActivo: { borderColor: "#BF7C48", backgroundColor: "#FEF3C7" },
-  textoRol: { color: "#6D5540", fontSize: 13, fontWeight: "500" },
-  textoRolActivo: { color: "#BF7C48", fontWeight: "bold" },
+  btnRolActivo: { borderColor: "#FF8C42", backgroundColor: "#FFE8D6" },
+  textoRol: { color: "#4F6D7A", fontSize: 13, fontWeight: "500" },
+  textoRolActivo: { color: "#FF8C42", fontWeight: "bold" },
   btnRegistrar: {
-    backgroundColor: "#F9B701",
+    backgroundColor: "#FF8C42",
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: "center",

@@ -1,11 +1,12 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { CommonActions } from "@react-navigation/native";
 import {
   DrawerContentScrollView,
   DrawerItem,
   DrawerItemList,
 } from "@react-navigation/drawer";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, AppStateStatus, Image, StyleSheet, Text, View } from "react-native";
@@ -21,41 +22,44 @@ function resolverAvatar(fotoPerfil: string | null) {
 
 // ─── Drawer content ────────────────────────────────────────────────────────────
 function CustomDrawerContent(props: any) {
-  const { role, userAvatar, userName, isDarkMode, toggleTheme, onSessionChange } = props;
+  const { role, userAvatar, userName, isDarkMode, toggleTheme, onSessionChange, navigation } = props;
 
-  // ✅ useRouter() directamente aquí — contexto de navegación correcto
-  const router = useRouter();
+  const isGuest = role === "guest" || !role;
 
-  const isGuest = role === "guest" || role === "login" || !role;
+  // navigation.getParent() accede al Stack raíz que contiene este Drawer,
+  // evitando conflictos con la animación de cierre del propio DrawerItem.
+  const goToLogin = () => {
+    navigation.getParent()?.dispatch(
+      CommonActions.reset({ index: 0, routes: [{ name: "index" }] })
+    );
+  };
 
   const handleLoginRedirect = async () => {
-    await AsyncStorage.setItem("userRole", "login");
-    router.replace("/");
+    await AsyncStorage.removeItem("userRole");
+    onSessionChange();
+    goToLogin();
   };
 
   const handleLogout = async () => {
     await AsyncStorage.multiRemove([
+      "userRole",
       "userName",
       "userAvatar",
       "userEmail",
       "userId",
     ]);
-    await AsyncStorage.setItem("userRole", "login");
-
-    // Limpiamos los datos y redirigimos de inmediato.
-    // NO llamamos a onSessionChange() aquí porque el cambio de estado de React
-    // puede cancelar/interrumpir la orden de router.replace("/")
-    router.replace("/");
+    onSessionChange();
+    goToLogin();
   };
 
-  const bgColor = isDarkMode ? "#374151" : "#E7E5E4";
-  const textColor = isDarkMode ? "#F9FAFB" : "#1C1917";
+  const bgColor = isDarkMode ? "#2D2D2E" : "#E7E5E4";
+  const textColor = isDarkMode ? "#EDF2F4" : "#2B2D42";
   const avatarSource = resolverAvatar(userAvatar);
 
   return (
     <DrawerContentScrollView
       {...props}
-      style={{ backgroundColor: isDarkMode ? "#1F2937" : "#FFFFFF" }}
+      style={{ backgroundColor: isDarkMode ? "#1A1A1B" : "#FFFFFF" }}
     >
       <View style={[styles.header, { backgroundColor: bgColor }]}>
         {role !== "guest" && role != null ? (
@@ -72,7 +76,7 @@ function CustomDrawerContent(props: any) {
               style={[
                 styles.profilePic,
                 styles.guestPic,
-                isDarkMode && { backgroundColor: "#4B5563" },
+                isDarkMode && { backgroundColor: "#2D2D2E" },
               ]}
             >
               <Ionicons
@@ -142,8 +146,6 @@ export default function DrawerLayout() {
     }
   }, []);
 
-  // ✅ Limpia el estado local inmediatamente cuando el usuario hace logout,
-  // sin esperar a que el componente se desmonte y remonte
   const handleSessionChange = useCallback(() => {
     setRole(null);
     setUserName(null);
@@ -194,12 +196,12 @@ export default function DrawerLayout() {
         />
       )}
       screenOptions={{
-        headerStyle: { backgroundColor: isDarkMode ? "#111827" : "#BF7C48" },
+        headerStyle: { backgroundColor: isDarkMode ? "#1A1A1B" : "#FF8C42" },
         headerTintColor: "#fff",
-        drawerActiveTintColor: isDarkMode ? "#F9B701" : "#BF7C48",
-        drawerInactiveTintColor: isDarkMode ? "#D1D5DB" : "#6D5540",
+        drawerActiveTintColor: isDarkMode ? "#FFA56D" : "#FF8C42",
+        drawerInactiveTintColor: isDarkMode ? "#95AFBA" : "#4F6D7A",
         drawerStyle: {
-          backgroundColor: isDarkMode ? "#1F2937" : "#F6F6F6",
+          backgroundColor: isDarkMode ? "#1A1A1B" : "#FFF9F5",
         },
       }}
     >
@@ -218,9 +220,31 @@ export default function DrawerLayout() {
         options={{
           headerTitle: "Mis Mascotas",
           drawerLabel: "Mis Mascotas",
-          drawerItemStyle: role === "guest" ? { display: "none" } : {},
+          drawerItemStyle: (!role || role === "guest") ? { display: "none" } : {},
           drawerIcon: ({ color }) => (
             <Ionicons name="paw-outline" size={24} color={color} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="perfil"
+        options={{
+          headerTitle: "Mi Perfil",
+          drawerLabel: "Mi Perfil",
+          drawerItemStyle: (!role || role === "guest") ? { display: "none" } : {},
+          drawerIcon: ({ color }) => (
+            <Ionicons name="person-circle-outline" size={24} color={color} />
+          ),
+        }}
+      />
+      <Drawer.Screen
+        name="misPublicaciones"
+        options={{
+          headerTitle: "Mis Publicaciones",
+          drawerLabel: "Mis Publicaciones",
+          drawerItemStyle: { display: "none" },
+          drawerIcon: ({ color }) => (
+            <Ionicons name="newspaper-outline" size={24} color={color} />
           ),
         }}
       />

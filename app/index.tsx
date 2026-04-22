@@ -30,12 +30,7 @@ export default function LoginScreen() {
       try {
         const role = await AsyncStorage.getItem("userRole");
 
-        if (
-          role &&
-          role.trim() !== "" &&
-          role !== "guest" &&
-          role !== "login"
-        ) {
+        if (role && role.trim() !== "" && role !== "guest") {
           router.replace("/(drawer)/(tabs)");
         }
       } catch (e) {
@@ -202,7 +197,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: "bold",
-    color: "#BF7C48",
+    color: "#FF8C42",
     textAlign: "center",
     marginBottom: 20,
   },
@@ -219,7 +214,7 @@ const styles = StyleSheet.create({
   icon: { marginRight: 10 },
   input: { flex: 1, height: 50, color: "#444" },
   btnEntrar: {
-    backgroundColor: "#F9B701",
+    backgroundColor: "#FF8C42",
     paddingVertical: 15,
     borderRadius: 10,
     alignItems: "center",
@@ -229,13 +224,13 @@ const styles = StyleSheet.create({
   btnText: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
   opcionesExtras: { marginTop: 20 },
   btnSecundario: { alignItems: "center", paddingVertical: 10 },
-  btnSecundarioText: { color: "#BF7C48", fontWeight: "bold", fontSize: 15 },
+  btnSecundarioText: { color: "#FF8C42", fontWeight: "bold", fontSize: 15 },
   divisor: { flexDirection: "row", alignItems: "center", marginVertical: 15 },
   linea: { flex: 1, height: 1, backgroundColor: "#D6D3D1" },
   textoDivisor: { width: 30, textAlign: "center", color: "#A8A29E" },
   btnInvitado: { alignItems: "center", paddingVertical: 10 },
   btnInvitadoText: {
-    color: "#6D5540",
+    color: "#4F6D7A",
     textDecorationLine: "underline",
     fontSize: 15,
   },

@@ -7,6 +7,8 @@ export interface Usuario {
   contraseña?: string;
   fotoPerfil: string;
   rol: 'Dueño' | 'Refugio';
+  fechaNacimiento: string;
+  fechaRegistro: string;
   metricas: {
     numMascotas: number;
     numPublicaciones: number;
@@ -14,33 +16,41 @@ export interface Usuario {
 }
 
 export interface Mascota {
-  idUsuarioCreador: string;
-  nombreDueño: string;
-  nombreMascota: string;
-  tipoAnimal: 'Perro' | 'Gato' | 'Ave' | 'Otro';
+  idUsuario: string;
+  nombre: string;
+  tipoAnimal: string;
   raza: string;
-  edad: string;
-  peso: string;
-  caracteristicas: string;
-  fotos: string[];
-  estado: 'Con su familia' | 'Disponible' | 'En proceso de adopción';
+  comportamiento: string;
+  rasgosParticulares: string;
+  edad: number;
+  peso: number;
+  fechaNacimiento: string;
+  fechaRegistro: string;
+  enfermedades: Record<string, string>;
+  vacunas: Record<string, string>;
+  sexo: 'macho' | 'hembra';
+  esterilizado: boolean;
+}
+
+export interface FotoMascota {
+  idFoto: string;
+  idMascota: string;
+  idUsuario: string;
+  fechaRegistro: string;
+  url: string;
 }
 
 export interface Publicacion {
-  idUsuarioCreador: string;
-  tipoPublicacion: 'Extravío' | 'Encontrado' | 'Maltrato' | 'Adopción';
-  tipoAnimal: string;
-  raza: string;
-  edad: string;
-  peso: string;
-  caracteristicas: string;
-  fotos: string[];
-
-  estadoPublicacion: 'Activa' | 'Resuelta';
-  fechaReporte: Date;
-  ubicacion: {
-    latitud: number;
-    longitud: number;
-    direccionAproximada?: string;
+  idUsuario: string;
+  idMascota?: string;
+  tipo: 'reporte' | 'perdidos' | 'recreacion';
+  descripcion: string;
+  fechaRegistro: string;
+  likes: number;
+  fotos: Record<string, string>;
+  estado: string;
+  ubicacion?: {
+    latitude: number;
+    longitude: number;
   };
 }

@@ -42,7 +42,24 @@ function RootNavigation() {
       <NavThemeProvider value={isDarkMode ? DarkTheme : DefaultTheme}>
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="index" />
+          <Stack.Screen name="registro" />
           <Stack.Screen name="(drawer)" />
+          <Stack.Screen
+            name="mascota/[id]"
+            options={{ headerShown: true, headerBackTitle: "Atrás", headerTintColor: "#FF8C42", headerStyle: { backgroundColor: "#FFF" } }}
+          />
+          <Stack.Screen
+            name="mascota/nueva"
+            options={{ headerShown: true, headerBackTitle: "Atrás", headerTintColor: "#FF8C42", headerStyle: { backgroundColor: "#FFF" } }}
+          />
+          <Stack.Screen
+            name="publicacion/[id]"
+            options={{ headerShown: true, headerBackTitle: "Atrás", headerTintColor: "#FF8C42", headerStyle: { backgroundColor: "#FFF" } }}
+          />
+          <Stack.Screen
+            name="publicacion/nueva"
+            options={{ headerShown: true, headerBackTitle: "Atrás", headerTintColor: "#FF8C42", headerStyle: { backgroundColor: "#FFF" } }}
+          />
         </Stack>
         <StatusBar style={isDarkMode ? "light" : "dark"} />
       </NavThemeProvider>
