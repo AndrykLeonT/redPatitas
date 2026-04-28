@@ -1,12 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
-import { Stack, useLocalSearchParams } from "expo-router";
-import { get, ref } from "firebase/database";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
+import { get, ref, remove } from "firebase/database";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Dimensions,
   FlatList,
   Image,
+  Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -15,7 +19,7 @@ import {
 import { db } from "../../config/firebase";
 import { Mascota, Publicacion } from "../../models/firebaseModels";
 
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
 
 const TIPO_LABEL: Record<string, string> = {
   reporte: "Reporte", perdidos: "Perdidos", recreacion: "Recreación",
@@ -26,10 +30,18 @@ const TIPO_COLOR: Record<string, string> = {
 
 export default function PublicacionDetalle() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const router = useRouter();
   const [publicacion, setPublicacion] = useState<Publicacion | null>(null);
   const [mascota, setMascota] = useState<Mascota | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [fotoViewer, setFotoViewer] = useState<{ fotos: string[]; index: number } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem("userId").then(setUserId);
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -53,6 +65,30 @@ export default function PublicacionDetalle() {
     })();
   }, [id]);
 
+  const eliminar = () => {
+    Alert.alert(
+      "Eliminar publicación",
+      "¿Seguro que deseas eliminar esta publicación? Esta acción no se puede deshacer.",
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await remove(ref(db, `publicaciones/${id}`));
+              router.back();
+            } catch {
+              Alert.alert("Error", "No se pudo eliminar la publicación.");
+              setDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
   if (isLoading) {
     return (
       <View style={styles.centrado}>
@@ -72,6 +108,7 @@ export default function PublicacionDetalle() {
     );
   }
 
+  const esOwner = userId === publicacion.idUsuario;
   const fotos = publicacion.fotos ? Object.values(publicacion.fotos) : [];
   const tipo = publicacion.tipo ?? "perdido";
   const color = TIPO_COLOR[tipo] ?? "#6B7280";
@@ -86,8 +123,79 @@ export default function PublicacionDetalle() {
           headerTintColor: "#FF8C42",
           headerStyle: { backgroundColor: "#FFF" },
           headerTitleStyle: { color: "#2B2D42", fontWeight: "bold" },
+          ...(esOwner && {
+            headerRight: () => (
+              <Pressable onPress={eliminar} style={{ marginRight: 12 }} disabled={deleting}>
+                <Ionicons name="trash-outline" size={22} color="#EF4444" />
+              </Pressable>
+            ),
+          }),
         }}
       />
+
+      {/* Visor de foto en pantalla completa */}
+      <Modal
+        visible={!!fotoViewer}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFotoViewer(null)}
+      >
+        <View style={styles.viewerBg}>
+          <Pressable style={styles.viewerClose} onPress={() => setFotoViewer(null)}>
+            <Ionicons name="close" size={30} color="#FFF" />
+          </Pressable>
+          {fotoViewer && (
+            <>
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={styles.viewerContent}
+                maximumZoomScale={4}
+                minimumZoomScale={1}
+                centerContent
+                showsHorizontalScrollIndicator={false}
+                showsVerticalScrollIndicator={false}
+              >
+                <Image
+                  source={{ uri: fotoViewer.fotos[fotoViewer.index] }}
+                  style={styles.viewerImg}
+                  resizeMode="contain"
+                />
+              </ScrollView>
+              {fotoViewer.fotos.length > 1 && (
+                <View style={styles.viewerNav}>
+                  <Pressable
+                    onPress={() =>
+                      setFotoViewer((f) => f && f.index > 0 ? { ...f, index: f.index - 1 } : f)
+                    }
+                  >
+                    <Ionicons
+                      name="chevron-back"
+                      size={36}
+                      color={fotoViewer.index > 0 ? "#FFF" : "#444"}
+                    />
+                  </Pressable>
+                  <Text style={styles.viewerCounter}>
+                    {fotoViewer.index + 1} / {fotoViewer.fotos.length}
+                  </Text>
+                  <Pressable
+                    onPress={() =>
+                      setFotoViewer((f) =>
+                        f && f.index < f.fotos.length - 1 ? { ...f, index: f.index + 1 } : f
+                      )
+                    }
+                  >
+                    <Ionicons
+                      name="chevron-forward"
+                      size={36}
+                      color={fotoViewer.index < fotoViewer.fotos.length - 1 ? "#FFF" : "#444"}
+                    />
+                  </Pressable>
+                </View>
+              )}
+            </>
+          )}
+        </View>
+      </Modal>
 
       {/* Galería de fotos */}
       {fotos.length > 0 ? (
@@ -97,8 +205,10 @@ export default function PublicacionDetalle() {
           pagingEnabled
           showsHorizontalScrollIndicator={false}
           keyExtractor={(_, i) => String(i)}
-          renderItem={({ item }) => (
-            <Image source={{ uri: item }} style={styles.foto} />
+          renderItem={({ item, index }) => (
+            <Pressable onPress={() => setFotoViewer({ fotos, index })}>
+              <Image source={{ uri: item }} style={styles.foto} />
+            </Pressable>
           )}
           scrollEnabled={fotos.length > 1}
         />
@@ -174,6 +284,18 @@ export default function PublicacionDetalle() {
           <Text style={styles.likesText}>{publicacion.likes ?? 0} personas están atentas</Text>
         </View>
       </View>
+
+      {/* Eliminar (solo dueño) */}
+      {esOwner && (
+        <Pressable
+          style={[styles.btnEliminar, deleting && { opacity: 0.6 }]}
+          onPress={eliminar}
+          disabled={deleting}
+        >
+          <Ionicons name="trash-outline" size={18} color="#EF4444" />
+          <Text style={styles.btnEliminarText}>Eliminar publicación</Text>
+        </Pressable>
+      )}
     </ScrollView>
   );
 }
@@ -223,4 +345,31 @@ const styles = StyleSheet.create({
   ubicacionText: { fontSize: 14, color: "#4F6D7A" },
   likesRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   likesText: { fontSize: 14, color: "#4F6D7A" },
+  btnEliminar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 8,
+    paddingVertical: 13,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#EF4444",
+    backgroundColor: "#FFF",
+  },
+  btnEliminarText: { color: "#EF4444", fontWeight: "bold", fontSize: 15 },
+  viewerBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.95)", justifyContent: "center" },
+  viewerClose: { position: "absolute", top: 48, right: 16, zIndex: 10, padding: 8 },
+  viewerContent: { flex: 1, justifyContent: "center", alignItems: "center" },
+  viewerImg: { width, height: height * 0.75 },
+  viewerNav: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+    paddingTop: 16,
+  },
+  viewerCounter: { color: "#FFF", fontSize: 16 },
 });

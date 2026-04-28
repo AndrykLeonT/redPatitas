@@ -30,6 +30,7 @@ export interface Mascota {
   vacunas: Record<string, string>;
   sexo: 'macho' | 'hembra';
   esterilizado: boolean;
+  fotos?: Record<string, string>;
 }
 
 export interface FotoMascota {

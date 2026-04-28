@@ -1,11 +1,13 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useRouter } from "expo-router";
+import * as ImagePicker from "expo-image-picker";
 import { push, ref } from "firebase/database";
 import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,8 +19,14 @@ import {
 import { db } from "../../config/firebase";
 import { Mascota } from "../../models/firebaseModels";
 
+const CLOUD_NAME = "dwlbornu8";
+const UPLOAD_PRESET = "uploadRedPatitas";
+const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
+const MAX_FOTOS = 5;
+
 export default function NuevaMascota() {
   const router = useRouter();
+
   const [nombre, setNombre] = useState("");
   const [tipoAnimal, setTipoAnimal] = useState("");
   const [raza, setRaza] = useState("");
@@ -29,7 +37,45 @@ export default function NuevaMascota() {
   const [fechaNacimiento, setFechaNacimiento] = useState("");
   const [comportamiento, setComportamiento] = useState("");
   const [rasgosParticulares, setRasgosParticulares] = useState("");
+  const [fotosLocales, setFotosLocales] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState("");
+
+  const pickImages = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Permiso requerido", "Necesitamos acceso a tu galería.");
+      return;
+    }
+    const remaining = MAX_FOTOS - fotosLocales.length;
+    if (remaining <= 0) return;
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+      selectionLimit: remaining,
+    });
+
+    if (!result.canceled) {
+      const newUris = result.assets.map((a) => a.uri);
+      setFotosLocales((prev) => [...prev, ...newUris].slice(0, MAX_FOTOS));
+    }
+  };
+
+  const removeImage = (index: number) => {
+    setFotosLocales((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadImage = async (uri: string): Promise<string> => {
+    const formData = new FormData();
+    formData.append("file", { uri, type: "image/jpeg", name: "photo.jpg" } as any);
+    formData.append("upload_preset", UPLOAD_PRESET);
+    const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
+    const data = await res.json();
+    if (!data.secure_url) throw new Error(data.error?.message ?? "Error al subir imagen");
+    return data.secure_url;
+  };
 
   const guardar = async () => {
     if (!nombre.trim() || !tipoAnimal.trim() || !raza.trim() || !edad || !peso) {
@@ -51,6 +97,14 @@ export default function NuevaMascota() {
       const userId = await AsyncStorage.getItem("userId");
       if (!userId) { Alert.alert("Error", "No hay sesión activa."); return; }
 
+      const fotosRecord: Record<string, string> = {};
+      for (let i = 0; i < fotosLocales.length; i++) {
+        setLoadingStatus(`Subiendo foto ${i + 1} de ${fotosLocales.length}...`);
+        const url = await uploadImage(fotosLocales[i]);
+        fotosRecord[`foto_${Date.now()}_${i}`] = url;
+      }
+
+      setLoadingStatus("Guardando mascota...");
       const nueva: Mascota = {
         idUsuario: userId,
         nombre: nombre.trim(),
@@ -66,6 +120,7 @@ export default function NuevaMascota() {
         rasgosParticulares: rasgosParticulares.trim(),
         enfermedades: {},
         vacunas: {},
+        fotos: fotosRecord,
       };
       await push(ref(db, "mascotas"), nueva);
       Alert.alert("¡Listo!", "Mascota registrada correctamente.", [
@@ -75,6 +130,7 @@ export default function NuevaMascota() {
       Alert.alert("Error", e.message ?? "No se pudo guardar la mascota.");
     } finally {
       setIsLoading(false);
+      setLoadingStatus("");
     }
   };
 
@@ -90,6 +146,7 @@ export default function NuevaMascota() {
         }}
       />
 
+      {/* Información básica */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Información básica</Text>
 
@@ -162,6 +219,7 @@ export default function NuevaMascota() {
         </View>
       </View>
 
+      {/* Detalles adicionales */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Detalles adicionales</Text>
 
@@ -188,9 +246,33 @@ export default function NuevaMascota() {
         />
       </View>
 
+      {/* Fotos */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Fotos ({fotosLocales.length}/{MAX_FOTOS})</Text>
+        <View style={styles.fotosGrid}>
+          {fotosLocales.map((uri, index) => (
+            <View key={index} style={styles.fotoThumb}>
+              <Image source={{ uri }} style={styles.thumbImg} />
+              <Pressable style={styles.removeBtn} onPress={() => removeImage(index)}>
+                <Ionicons name="close-circle" size={22} color="#EF4444" />
+              </Pressable>
+            </View>
+          ))}
+          {fotosLocales.length < MAX_FOTOS && (
+            <Pressable style={styles.addFotoBtn} onPress={pickImages}>
+              <Ionicons name="camera-outline" size={28} color="#FF8C42" />
+              <Text style={styles.addFotoText}>Agregar</Text>
+            </Pressable>
+          )}
+        </View>
+      </View>
+
       <Pressable style={[styles.btnGuardar, isLoading && { opacity: 0.7 }]} onPress={guardar} disabled={isLoading}>
         {isLoading ? (
-          <ActivityIndicator color="#FFF" />
+          <View style={{ alignItems: "center", gap: 6 }}>
+            <ActivityIndicator color="#FFF" />
+            {loadingStatus ? <Text style={styles.loadingStatusText}>{loadingStatus}</Text> : null}
+          </View>
         ) : (
           <>
             <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
@@ -250,6 +332,22 @@ const styles = StyleSheet.create({
     color: "#2B2D42",
     minHeight: 80,
   },
+  fotosGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  fotoThumb: { position: "relative" },
+  thumbImg: { width: 80, height: 80, borderRadius: 10 },
+  removeBtn: { position: "absolute", top: -8, right: -8 },
+  addFotoBtn: {
+    width: 80,
+    height: 80,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#FF8C42",
+    borderStyle: "dashed",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#FFF9F5",
+  },
+  addFotoText: { fontSize: 11, color: "#FF8C42", marginTop: 2 },
   btnGuardar: {
     flexDirection: "row",
     alignItems: "center",
@@ -263,4 +361,5 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   btnGuardarText: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
+  loadingStatusText: { color: "#FFF", fontSize: 12 },
 });

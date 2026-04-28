@@ -1,9 +1,16 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { get, ref } from "firebase/database";
+import { get, ref, remove } from "firebase/database";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
+  Dimensions,
+  FlatList,
+  Image,
+  Modal,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -11,6 +18,8 @@ import {
 } from "react-native";
 import { db } from "../../config/firebase";
 import { Mascota } from "../../models/firebaseModels";
+
+const { width, height } = Dimensions.get("window");
 
 function Fila({ label, valor }: { label: string; valor: string | number | boolean }) {
   const texto =
@@ -29,6 +38,13 @@ export default function MascotaDetalle() {
   const [mascota, setMascota] = useState<Mascota | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+  const [fotoViewer, setFotoViewer] = useState<{ fotos: string[]; index: number } | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  useEffect(() => {
+    AsyncStorage.getItem("userId").then(setUserId);
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -47,6 +63,30 @@ export default function MascotaDetalle() {
       }
     })();
   }, [id]);
+
+  const eliminar = () => {
+    Alert.alert(
+      "Eliminar mascota",
+      `¿Seguro que deseas eliminar a ${mascota?.nombre}? Esta acción no se puede deshacer.`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Eliminar",
+          style: "destructive",
+          onPress: async () => {
+            setDeleting(true);
+            try {
+              await remove(ref(db, `mascotas/${id}`));
+              router.back();
+            } catch {
+              Alert.alert("Error", "No se pudo eliminar la mascota.");
+              setDeleting(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   if (isLoading) {
     return (
@@ -67,8 +107,10 @@ export default function MascotaDetalle() {
     );
   }
 
+  const esOwner = userId === mascota.idUsuario;
   const enfermedades = mascota.enfermedades ? Object.values(mascota.enfermedades) : [];
   const vacunas = mascota.vacunas ? Object.values(mascota.vacunas) : [];
+  const fotos = mascota.fotos ? Object.values(mascota.fotos) : [];
 
   return (
     <ScrollView style={styles.bg} contentContainerStyle={styles.content}>
@@ -79,12 +121,103 @@ export default function MascotaDetalle() {
           headerTintColor: "#FF8C42",
           headerStyle: { backgroundColor: "#FFF" },
           headerTitleStyle: { color: "#2B2D42", fontWeight: "bold" },
+          ...(esOwner && {
+            headerRight: () => (
+              <Pressable onPress={eliminar} style={{ marginRight: 12 }} disabled={deleting}>
+                <Ionicons name="trash-outline" size={22} color="#EF4444" />
+              </Pressable>
+            ),
+          }),
         }}
       />
 
-      {/* Ícono principal */}
-      <View style={styles.iconBanner}>
-        <Ionicons name="paw" size={64} color="#FF8C42" />
+      {/* Visor de foto en pantalla completa */}
+      <Modal
+        visible={!!fotoViewer}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setFotoViewer(null)}
+      >
+        <View style={styles.viewerBg}>
+          <Pressable style={styles.viewerClose} onPress={() => setFotoViewer(null)}>
+            <Ionicons name="close" size={30} color="#FFF" />
+          </Pressable>
+          {fotoViewer && (
+            <>
+              <ScrollView
+                style={{ flex: 1 }}
+                contentContainerStyle={styles.viewerContent}
+                maximumZoomScale={4}
+                minimumZoomScale={1}
+                centerContent
+                showsHorizontalScrollIndicator={false}
+                showsVerticalScrollIndicator={false}
+              >
+                <Image
+                  source={{ uri: fotoViewer.fotos[fotoViewer.index] }}
+                  style={styles.viewerImg}
+                  resizeMode="contain"
+                />
+              </ScrollView>
+              {fotoViewer.fotos.length > 1 && (
+                <View style={styles.viewerNav}>
+                  <Pressable
+                    onPress={() =>
+                      setFotoViewer((f) => f && f.index > 0 ? { ...f, index: f.index - 1 } : f)
+                    }
+                  >
+                    <Ionicons
+                      name="chevron-back"
+                      size={36}
+                      color={fotoViewer.index > 0 ? "#FFF" : "#444"}
+                    />
+                  </Pressable>
+                  <Text style={styles.viewerCounter}>
+                    {fotoViewer.index + 1} / {fotoViewer.fotos.length}
+                  </Text>
+                  <Pressable
+                    onPress={() =>
+                      setFotoViewer((f) =>
+                        f && f.index < f.fotos.length - 1 ? { ...f, index: f.index + 1 } : f
+                      )
+                    }
+                  >
+                    <Ionicons
+                      name="chevron-forward"
+                      size={36}
+                      color={fotoViewer.index < fotoViewer.fotos.length - 1 ? "#FFF" : "#444"}
+                    />
+                  </Pressable>
+                </View>
+              )}
+            </>
+          )}
+        </View>
+      </Modal>
+
+      {/* Galería de fotos o banner con ícono */}
+      {fotos.length > 0 ? (
+        <FlatList
+          data={fotos}
+          horizontal
+          pagingEnabled
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(_, i) => String(i)}
+          renderItem={({ item, index }) => (
+            <Pressable onPress={() => setFotoViewer({ fotos, index })}>
+              <Image source={{ uri: item }} style={styles.foto} />
+            </Pressable>
+          )}
+          scrollEnabled={fotos.length > 1}
+        />
+      ) : (
+        <View style={styles.iconBanner}>
+          <Ionicons name="paw" size={64} color="#FF8C42" />
+        </View>
+      )}
+
+      {/* Nombre y especie */}
+      <View style={styles.nameBanner}>
         <Text style={styles.nombreGrande}>{mascota.nombre}</Text>
         <Text style={styles.subtitulo}>{mascota.tipoAnimal} · {mascota.raza}</Text>
       </View>
@@ -146,6 +279,18 @@ export default function MascotaDetalle() {
           <Text style={styles.textoVacio}>Sin condiciones registradas.</Text>
         )}
       </View>
+
+      {/* Eliminar (solo dueño) */}
+      {esOwner && (
+        <Pressable
+          style={[styles.btnEliminar, deleting && { opacity: 0.6 }]}
+          onPress={eliminar}
+          disabled={deleting}
+        >
+          <Ionicons name="trash-outline" size={18} color="#EF4444" />
+          <Text style={styles.btnEliminarText}>Eliminar mascota</Text>
+        </Pressable>
+      )}
     </ScrollView>
   );
 }
@@ -155,14 +300,23 @@ const styles = StyleSheet.create({
   content: { paddingBottom: 30 },
   centrado: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FFF9F5" },
   errorText: { color: "#EF4444", fontSize: 16, marginTop: 12 },
+  foto: { width, height: 260, resizeMode: "cover" },
   iconBanner: {
     alignItems: "center",
+    justifyContent: "center",
     backgroundColor: "#FFF",
-    paddingVertical: 28,
+    height: 140,
+    elevation: 2,
+  },
+  nameBanner: {
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    paddingVertical: 16,
+    paddingBottom: 20,
     marginBottom: 12,
     elevation: 2,
   },
-  nombreGrande: { fontSize: 26, fontWeight: "bold", color: "#2B2D42", marginTop: 10 },
+  nombreGrande: { fontSize: 26, fontWeight: "bold", color: "#2B2D42" },
   subtitulo: { fontSize: 15, color: "#4F6D7A", marginTop: 4 },
   card: {
     backgroundColor: "#FFF",
@@ -186,4 +340,31 @@ const styles = StyleSheet.create({
   textoVacio: { fontSize: 14, color: "#9CA3AF", fontStyle: "italic" },
   chipRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 },
   chipText: { fontSize: 14, color: "#4F6D7A" },
+  btnEliminar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    marginHorizontal: 16,
+    marginTop: 8,
+    paddingVertical: 13,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#EF4444",
+    backgroundColor: "#FFF",
+  },
+  btnEliminarText: { color: "#EF4444", fontWeight: "bold", fontSize: 15 },
+  viewerBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.95)", justifyContent: "center" },
+  viewerClose: { position: "absolute", top: 48, right: 16, zIndex: 10, padding: 8 },
+  viewerContent: { flex: 1, justifyContent: "center", alignItems: "center" },
+  viewerImg: { width, height: height * 0.75 },
+  viewerNav: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 24,
+    paddingBottom: 40,
+    paddingTop: 16,
+  },
+  viewerCounter: { color: "#FFF", fontSize: 16 },
 });

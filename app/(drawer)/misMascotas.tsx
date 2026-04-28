@@ -6,6 +6,7 @@ import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -70,24 +71,33 @@ export default function MisMascotas() {
             <Text style={styles.emptySubtitle}>Aún no tienes mascotas registradas.</Text>
           </View>
         }
-        renderItem={({ item }) => (
-          <Pressable
-            style={styles.card}
-            onPress={() => router.push(`/mascota/${item.id}` as any)}
-          >
-            <View style={styles.iconBox}>
-              <Ionicons name="paw" size={28} color="#FF8C42" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.nombre}>{item.data.nombre}</Text>
-              <Text style={styles.sub}>
-                {item.data.tipoAnimal} · {item.data.raza} ·{" "}
-                {item.data.edad} {item.data.edad === 1 ? "año" : "años"}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-          </Pressable>
-        )}
+        renderItem={({ item }) => {
+          const primeraFoto = item.data.fotos ? Object.values(item.data.fotos)[0] : null;
+          return (
+            <Pressable
+              style={styles.card}
+              onPress={() => router.push(`/mascota/${item.id}` as any)}
+            >
+              {primeraFoto ? (
+                <Image source={{ uri: primeraFoto }} style={styles.foto} />
+              ) : (
+                <View style={[styles.foto, styles.fotoPlaceholder]}>
+                  <Ionicons name="paw" size={28} color="#FF8C42" />
+                </View>
+              )}
+              <View style={{ flex: 1, paddingHorizontal: 12 }}>
+                <Text style={styles.nombre}>{item.data.nombre}</Text>
+                <Text style={styles.sub}>
+                  {item.data.tipoAnimal} · {item.data.raza}
+                </Text>
+                <Text style={styles.sub}>
+                  {item.data.edad} {item.data.edad === 1 ? "año" : "años"} · {item.data.peso} kg
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+            </Pressable>
+          );
+        }}
       />
     </View>
   );
@@ -118,18 +128,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#FFF",
     borderRadius: 14,
-    padding: 14,
+    overflow: "hidden",
     marginBottom: 10,
     elevation: 2,
   },
-  iconBox: {
-    width: 48, height: 48,
-    borderRadius: 24,
-    backgroundColor: "#FFE8D6",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
+  foto: { width: 80, height: 80 },
+  fotoPlaceholder: { backgroundColor: "#FFE8D6", justifyContent: "center", alignItems: "center" },
   nombre: { fontSize: 16, fontWeight: "bold", color: "#2B2D42" },
   sub: { fontSize: 13, color: "#4F6D7A", marginTop: 2 },
 });

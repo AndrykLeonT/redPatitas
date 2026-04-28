@@ -93,7 +93,7 @@ export default function Mapa() {
         {puntos.map(({ id, pub, mascota }) => (
           <Marker
             key={id}
-            coordinate={{ latitude: pub.ubicacion.latitude, longitude: pub.ubicacion.longitude }}
+            coordinate={{ latitude: pub.ubicacion!.latitude, longitude: pub.ubicacion!.longitude }}
             title={mascota?.nombre ?? "Mascota"}
             description={`${mascota?.raza ?? ""} · ${pub.tipo}`}
             pinColor={TIPO_COLOR[pub.tipo] ?? "red"}

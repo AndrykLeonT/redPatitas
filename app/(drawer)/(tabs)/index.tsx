@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import * as Location from "expo-location";
 import { get, ref } from "firebase/database";
 import { useCallback, useEffect, useState } from "react";
@@ -59,7 +59,7 @@ const FALLBACK_LOCATION = {
 export default function HomeScreen() {
   const router = useRouter();
   const [feed, setFeed] = useState<FeedItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [las isLoading, setIsLoading] = useState(true);
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
 
   useEffect(() => {
@@ -104,7 +104,7 @@ export default function HomeScreen() {
     }
   }, []);
 
-  useEffect(() => { cargarFeed(); }, [cargarFeed]);
+  useFocusEffect(useCallback(() => { cargarFeed(); }, [cargarFeed]));
 
   const renderTarjeta = ({ item }: { item: FeedItem }) => {
     const { pub, mascota } = item;
