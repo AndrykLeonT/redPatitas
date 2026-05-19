@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { get, push, ref, remove, set } from "firebase/database";
+import { get, ref } from "firebase/database";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -16,9 +16,30 @@ import {
   Text,
   View,
 } from "react-native";
+import OfflineBanner from "../../components/OfflineBanner";
+import PendingSyncBadge from "../../components/PendingSyncBadge";
 import { db } from "../../config/firebase";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
+import { guardarAdopcionLocal } from "../../database/adopcionesLocal";
+import { registrarCambioPendiente } from "../../database/cambiosPendientes";
+import { insertarReporteGenerado } from "../../database/reportesLocal";
+import { recalcularYGuardarEstadisticas } from "../../database/estadisticasLocal";
+import { esIdLocal, nuevoIdLocal } from "../../database/localDb";
+import {
+  eliminarMascotaLocalFisico,
+  marcarMascotaEliminadaLocal,
+  obtenerMascotaLocal,
+} from "../../database/mascotasLocal";
+import { obtenerUsuarioLocal } from "../../database/usuariosLocal";
+import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { Adopcion, Mascota } from "../../models/firebaseModels";
+import {
+  crearAdopcionEnFirebase,
+  eliminarMascotaEnFirebase,
+} from "../../services/firebasePersonalService";
+import { cacheMascotaDesdeFirebase } from "../../services/syncService";
+import { crearNombreArchivo, guardarReporteTxt, compartirReporteTxt } from "../../utils/reportFiles";
+import { generarReporteMascota } from "../../utils/reportTemplates";
 
 const { width, height } = Dimensions.get("window");
 
@@ -46,47 +67,111 @@ export default function MascotaDetalle() {
   const router = useRouter();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
+  const { isConnected } = useNetworkStatus();
   const [mascota, setMascota] = useState<Mascota | null>(null);
+  const [pendienteSync, setPendienteSync] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [fotoViewer, setFotoViewer] = useState<{ fotos: string[]; index: number } | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [userRole, setUserRole] = useState<string | null>(null);
   const [showBajaModal, setShowBajaModal] = useState(false);
 
   useEffect(() => {
-    Promise.all([
-      AsyncStorage.getItem("userId"),
-      AsyncStorage.getItem("userRole"),
-    ]).then(([uid, role]) => {
-      setUserId(uid);
-      setUserRole(role);
-    });
+    AsyncStorage.getItem("userId").then(setUserId);
   }, []);
 
   useEffect(() => {
     if (!id) return;
+
+    const cargarDesdeLocal = (): boolean => {
+      const local = obtenerMascotaLocal(id);
+      if (local) {
+        const { id: _, pendienteSync: ps, creadoLocal, eliminadoLocal, ...data } = local;
+        setMascota(data as Mascota);
+        setPendienteSync(Boolean(ps || creadoLocal));
+        return true;
+      }
+      return false;
+    };
+
     (async () => {
+      // Si es un ID local (creado offline), no existe en Firebase: ir directo a local.
+      if (esIdLocal(id)) {
+        if (!cargarDesdeLocal()) setError(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // Sin conexión: SQLite directo
+      if (isConnected === false) {
+        if (!cargarDesdeLocal()) setError(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // Con conexión: Firebase primero, fallback a SQLite
       try {
         const snap = await get(ref(db, `mascotas/${id}`));
         if (snap.exists()) {
-          setMascota(snap.val() as Mascota);
-        } else {
+          const m = snap.val() as Mascota;
+          setMascota(m);
+          setPendienteSync(false);
+          cacheMascotaDesdeFirebase(id, m);
+        } else if (!cargarDesdeLocal()) {
           setError(true);
         }
       } catch {
-        setError(true);
+        if (!cargarDesdeLocal()) setError(true);
       } finally {
         setIsLoading(false);
       }
     })();
-  }, [id]);
+  }, [id, isConnected]);
 
   const eliminar = () => setShowBajaModal(true);
 
+  const exportarReporte = async () => {
+    if (!mascota) return;
+    try {
+      const usuario = userId === mascota.idUsuario && userId
+        ? obtenerUsuarioLocal(userId)
+        : null;
+      const contenido = generarReporteMascota({ id, mascota, usuario });
+      const fileName = crearNombreArchivo("mascota", mascota.nombre);
+      const fileUri = await guardarReporteTxt(fileName, contenido);
+      insertarReporteGenerado({
+        userId: userId ?? null,
+        titulo: `Reporte de mascota: ${mascota.nombre}`,
+        tipo: "mascota",
+        entidadOrigen: "mascota",
+        entidadId: id,
+        fileName,
+        fileUri,
+        fechaCreacion: new Date().toISOString(),
+        descripcion: `${mascota.tipoAnimal} - ${mascota.raza}`,
+      });
+      Alert.alert(
+        "Reporte generado",
+        "El archivo TXT se guardó en Reportes generados.",
+        [
+          { text: "OK" },
+          {
+            text: "Compartir",
+            onPress: () => compartirReporteTxt(fileUri).catch((error: any) => {
+              Alert.alert("No disponible", error?.message ?? "No se pudo compartir el reporte.");
+            }),
+          },
+        ],
+      );
+    } catch (error: any) {
+      Alert.alert("Error", error?.message ?? "No se pudo generar el reporte.");
+    }
+  };
+
   const handleBaja = async (tipo: "adoptado_app" | "adoptado_externo" | "eliminar") => {
     setShowBajaModal(false);
+    const offline = isConnected === false;
 
     if (tipo === "eliminar") {
       Alert.alert(
@@ -100,7 +185,17 @@ export default function MascotaDetalle() {
             onPress: async () => {
               setDeleting(true);
               try {
-                await remove(ref(db, `mascotas/${id}`));
+                if (offline) {
+                  // Soft delete + cambio pendiente. Si era ID local, también lo
+                  // tachamos: el sync lo borrará físicamente sin tocar Firebase.
+                  marcarMascotaEliminadaLocal(id);
+                  registrarCambioPendiente(userId!, "mascota", id, "eliminar", {});
+                  if (mascota?.idUsuario) recalcularYGuardarEstadisticas(mascota.idUsuario);
+                } else {
+                  await eliminarMascotaEnFirebase(id);
+                  eliminarMascotaLocalFisico(id);
+                  if (mascota?.idUsuario) recalcularYGuardarEstadisticas(mascota.idUsuario);
+                }
                 router.back();
               } catch {
                 Alert.alert("Error", "No se pudo eliminar la mascota.");
@@ -121,18 +216,42 @@ export default function MascotaDetalle() {
         {
           text: "Confirmar",
           onPress: async () => {
+            if (!mascota) return;
             setDeleting(true);
             try {
-              const adopcionRef = push(ref(db, "adopciones"));
-              await set(adopcionRef, {
+              const adopcionPayload: Adopcion = {
                 idMascota: id,
-                idUsuario: mascota!.idUsuario,
-                tipoAnimal: mascota!.tipoAnimal,
-                nombreMascota: mascota!.nombre,
+                idUsuario: mascota.idUsuario,
+                tipoAnimal: mascota.tipoAnimal,
+                nombreMascota: mascota.nombre,
                 via: tipo === "adoptado_app" ? "app" : "externo",
                 fechaAdopcion: new Date().toISOString(),
-              } as Adopcion);
-              await remove(ref(db, `mascotas/${id}`));
+              };
+
+              if (offline) {
+                // 1. Crear adopción local con ID temporal
+                const idAdopcionLocal = nuevoIdLocal();
+                guardarAdopcionLocal(idAdopcionLocal, adopcionPayload, {
+                  pendienteSync: true,
+                  creadoLocal: true,
+                });
+                registrarCambioPendiente(
+                  userId!,
+                  "adopcion",
+                  idAdopcionLocal,
+                  "crear",
+                  adopcionPayload,
+                );
+                // 2. Soft delete de la mascota
+                marcarMascotaEliminadaLocal(id);
+                registrarCambioPendiente(userId!, "mascota", id, "eliminar", {});
+              } else {
+                const idAdopcionReal = await crearAdopcionEnFirebase(adopcionPayload);
+                guardarAdopcionLocal(idAdopcionReal, adopcionPayload);
+                await eliminarMascotaEnFirebase(id);
+                eliminarMascotaLocalFisico(id);
+              }
+              recalcularYGuardarEstadisticas(mascota.idUsuario);
               router.back();
             } catch {
               Alert.alert("Error", "No se pudo registrar la adopción.");
@@ -302,6 +421,8 @@ export default function MascotaDetalle() {
         </Pressable>
       </Modal>
 
+      {isConnected === false && <OfflineBanner />}
+
       {/* Galería de fotos o banner con ícono */}
       {fotos.length > 0 ? (
         <FlatList
@@ -327,6 +448,7 @@ export default function MascotaDetalle() {
       <View style={styles.nameBanner}>
         <Text style={styles.nombreGrande}>{mascota.nombre}</Text>
         <Text style={styles.subtitulo}>{mascota.tipoAnimal} · {mascota.raza}</Text>
+        {pendienteSync && <View style={{ marginTop: 6 }}><PendingSyncBadge /></View>}
       </View>
 
       {/* Datos generales */}
@@ -388,6 +510,17 @@ export default function MascotaDetalle() {
       </View>
 
       {/* Eliminar (solo dueño) */}
+      {esOwner && (
+        <Pressable
+          style={styles.btnExportar}
+          onPress={exportarReporte}
+          disabled={deleting}
+        >
+          <Ionicons name="document-text-outline" size={18} color={colors.accent} />
+          <Text style={styles.btnExportarText}>Exportar reporte</Text>
+        </Pressable>
+      )}
+
       {esOwner && (
         <Pressable
           style={[styles.btnEliminar, deleting && { opacity: 0.6 }]}
@@ -462,6 +595,20 @@ const makeStyles = (colors: ThemeColors) =>
       backgroundColor: colors.surface,
     },
     btnEliminarText: { color: colors.danger, fontWeight: "bold", fontSize: 15 },
+    btnExportar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      marginHorizontal: 16,
+      marginTop: 8,
+      paddingVertical: 13,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: colors.accent,
+      backgroundColor: colors.surface,
+    },
+    btnExportarText: { color: colors.accent, fontWeight: "bold", fontSize: 15 },
     viewerBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.95)", justifyContent: "center" },
     viewerClose: { position: "absolute", top: 48, right: 16, zIndex: 10, padding: 8 },
     viewerContent: { flex: 1, justifyContent: "center", alignItems: "center" },

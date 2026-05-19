@@ -12,8 +12,10 @@ import {
   Text,
   View,
 } from "react-native";
+import OfflineBanner from "../../../components/OfflineBanner";
 import { db } from "../../../config/firebase";
 import { ThemeColors, useTheme } from "../../../context/ThemeContext";
+import { useNetworkStatus } from "../../../hooks/useNetworkStatus";
 import { Mascota, Publicacion } from "../../../models/firebaseModels";
 
 export const calcularDistancia = (
@@ -61,6 +63,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
+  const { isConnected } = useNetworkStatus();
   const [feed, setFeed] = useState<FeedItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
@@ -79,6 +82,11 @@ export default function HomeScreen() {
 
   const cargarFeed = useCallback(async () => {
     setIsLoading(true);
+    if (isConnected === false) {
+      setFeed([]);
+      setIsLoading(false);
+      return;
+    }
     try {
       const [pubSnap, mascSnap] = await Promise.all([
         get(ref(db, "publicaciones")),
@@ -105,13 +113,13 @@ export default function HomeScreen() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isConnected]);
 
   useFocusEffect(useCallback(() => { cargarFeed(); }, [cargarFeed]));
 
   const renderTarjeta = ({ item }: { item: FeedItem }) => {
     const { pub, mascota } = item;
-    const tipo = pub.tipo ?? "perdido";
+    const tipo = pub.tipo ?? "reporte";
     const primeraFoto = pub.fotos ? Object.values(pub.fotos)[0] : null;
 
     let distanciaStr = "Sin ubicación";
@@ -168,6 +176,9 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.bg}>
+      {isConnected === false && (
+        <OfflineBanner texto="Las publicaciones globales no están disponibles sin conexión. Puedes seguir consultando tus mascotas y publicaciones personales." />
+      )}
       <FlatList
         data={feed}
         keyExtractor={(item) => item.id}
@@ -175,9 +186,19 @@ export default function HomeScreen() {
         contentContainerStyle={feed.length === 0 ? styles.centradoFlex : styles.container}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="paw-outline" size={56} color={colors.textSecondary} />
-            <Text style={styles.emptyTitle}>No hay publicaciones</Text>
-            <Text style={styles.emptySubtitle}>Aún no hay reportes ni mascotas en adopción.</Text>
+            <Ionicons
+              name={isConnected === false ? "cloud-offline-outline" : "paw-outline"}
+              size={56}
+              color={colors.textSecondary}
+            />
+            <Text style={styles.emptyTitle}>
+              {isConnected === false ? "Sin conexión" : "No hay publicaciones"}
+            </Text>
+            <Text style={styles.emptySubtitle}>
+              {isConnected === false
+                ? "El feed global requiere internet."
+                : "Aún no hay reportes ni mascotas en adopción."}
+            </Text>
           </View>
         }
       />

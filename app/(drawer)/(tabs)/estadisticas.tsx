@@ -255,7 +255,7 @@ export default function EstadisticasScreen() {
             <Ionicons name="analytics-outline" size={36} color={colors.textSecondary} />
             <Text style={styles.emptyText}>Sin mascotas perdidas resueltas todavía.</Text>
             <Text style={styles.emptyHint}>
-              Usa "Marcar como encontrado" en una publicación de tipo Perdidos.
+              Usa &quot;Marcar como encontrado&quot; en una publicación de tipo Perdidos.
             </Text>
           </View>
         ) : (

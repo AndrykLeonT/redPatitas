@@ -3,10 +3,11 @@ import { get, ref } from "firebase/database";
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker } from "react-native-maps";
+import OfflineBanner from "../../../components/OfflineBanner";
 import { db } from "../../../config/firebase";
 import { ThemeColors, useTheme } from "../../../context/ThemeContext";
+import { useNetworkStatus } from "../../../hooks/useNetworkStatus";
 import { Mascota, Publicacion } from "../../../models/firebaseModels";
-import { calcularDistancia } from "./index";
 
 type PuntoMapa = {
   id: string;
@@ -32,10 +33,12 @@ const FALLBACK = {
 export default function Mapa() {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
+  const { isConnected } = useNetworkStatus();
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [puntos, setPuntos] = useState<PuntoMapa[]>([]);
 
   useEffect(() => {
+    if (isConnected === false) return;
     (async () => {
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
@@ -45,9 +48,13 @@ export default function Mapa() {
         setLocation(FALLBACK as any);
       }
     })();
-  }, []);
+  }, [isConnected]);
 
   const cargarPuntos = useCallback(async () => {
+    if (isConnected === false) {
+      setPuntos([]);
+      return;
+    }
     try {
       const [pubSnap, mascSnap] = await Promise.all([
         get(ref(db, "publicaciones")),
@@ -68,9 +75,23 @@ export default function Mapa() {
     } catch (e) {
       console.error("Error cargando puntos del mapa:", e);
     }
-  }, []);
+  }, [isConnected]);
 
   useEffect(() => { cargarPuntos(); }, [cargarPuntos]);
+
+  if (isConnected === false) {
+    return (
+      <View style={styles.offlineContainer}>
+        <OfflineBanner texto="El mapa global requiere conexión para consultar ubicaciones actualizadas." />
+        <View style={styles.offlineContent}>
+          <Text style={styles.offlineTitle}>Mapa no disponible sin conexión</Text>
+          <Text style={styles.offlineText}>
+            Puedes seguir revisando tus mascotas y publicaciones personales desde el menú.
+          </Text>
+        </View>
+      </View>
+    );
+  }
 
   if (!location) {
     return (
@@ -113,4 +134,8 @@ const makeStyles = (colors: ThemeColors) =>
     loaderText: { marginTop: 10, color: colors.textSecondary },
     container: { flex: 1 },
     map: { flex: 1 },
+    offlineContainer: { flex: 1, backgroundColor: colors.background },
+    offlineContent: { flex: 1, justifyContent: "center", alignItems: "center", padding: 24 },
+    offlineTitle: { fontSize: 18, fontWeight: "bold", color: colors.text, textAlign: "center" },
+    offlineText: { fontSize: 14, color: colors.textSecondary, marginTop: 8, textAlign: "center", lineHeight: 20 },
   });

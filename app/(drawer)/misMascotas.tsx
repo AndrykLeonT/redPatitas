@@ -12,16 +12,27 @@ import {
   Text,
   View,
 } from "react-native";
+import OfflineBanner from "../../components/OfflineBanner";
+import PendingSyncBadge from "../../components/PendingSyncBadge";
 import { db } from "../../config/firebase";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
+import { listarMascotasPorUsuario } from "../../database/mascotasLocal";
+import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { Mascota } from "../../models/firebaseModels";
+import { cacheMascotaDesdeFirebase } from "../../services/syncService";
 
-type MascotaItem = { id: string; data: Mascota };
+type MascotaItem = {
+  id: string;
+  data: Mascota;
+  pendienteSync?: boolean;
+  creadoLocal?: boolean;
+};
 
 export default function MisMascotas() {
   const router = useRouter();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
+  const { isConnected } = useNetworkStatus();
   const [mascotas, setMascotas] = useState<MascotaItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -29,22 +40,49 @@ export default function MisMascotas() {
     setIsLoading(true);
     try {
       const userId = await AsyncStorage.getItem("userId");
-      if (!userId) return;
-      const snap = await get(ref(db, "mascotas"));
-      const arr: MascotaItem[] = [];
-      if (snap.exists()) {
-        snap.forEach((child) => {
-          const m = child.val() as Mascota;
-          if (m.idUsuario === userId) arr.push({ id: child.key!, data: m });
-        });
+      if (!userId) {
+        setIsLoading(false);
+        return;
       }
-      setMascotas(arr);
+
+      const cargarDesdeLocal = () => {
+        const locales = listarMascotasPorUsuario(userId).map((m) => {
+          const { id, pendienteSync, creadoLocal, eliminadoLocal, ...data } = m;
+          return { id, data: data as Mascota, pendienteSync, creadoLocal };
+        });
+        setMascotas(locales);
+      };
+
+      // Sin conexión: solo SQLite
+      if (isConnected === false) {
+        cargarDesdeLocal();
+        return;
+      }
+
+      // Con conexión: Firebase primero, fallback a SQLite si falla
+      try {
+        const snap = await get(ref(db, "mascotas"));
+        const arr: MascotaItem[] = [];
+        if (snap.exists()) {
+          snap.forEach((child) => {
+            const m = child.val() as Mascota;
+            if (m.idUsuario === userId) {
+              arr.push({ id: child.key!, data: m });
+              cacheMascotaDesdeFirebase(child.key!, m);
+            }
+          });
+        }
+        setMascotas(arr);
+      } catch (firebaseErr) {
+        console.warn("Firebase falló al cargar mascotas, fallback a SQLite", firebaseErr);
+        cargarDesdeLocal();
+      }
     } catch (e) {
       console.error("Error cargando mascotas:", e);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isConnected]);
 
   useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
 
@@ -58,6 +96,7 @@ export default function MisMascotas() {
 
   return (
     <View style={styles.bg}>
+      {isConnected === false && <OfflineBanner />}
       <Pressable style={styles.btnNueva} onPress={() => router.push("/mascota/nueva" as any)}>
         <Ionicons name="add-circle-outline" size={20} color={colors.textInverse} />
         <Text style={styles.btnNuevaText}>Nueva Mascota</Text>
@@ -76,6 +115,7 @@ export default function MisMascotas() {
         }
         renderItem={({ item }) => {
           const primeraFoto = item.data.fotos ? Object.values(item.data.fotos)[0] : null;
+          const showBadge = item.pendienteSync || item.creadoLocal;
           return (
             <Pressable
               style={styles.card}
@@ -88,7 +128,8 @@ export default function MisMascotas() {
                   <Ionicons name="paw" size={28} color={colors.accent} />
                 </View>
               )}
-              <View style={{ flex: 1, paddingHorizontal: 12 }}>
+              <View style={{ flex: 1, paddingHorizontal: 12, gap: 2 }}>
+                {showBadge && <PendingSyncBadge />}
                 <Text style={styles.nombre}>{item.data.nombre}</Text>
                 <Text style={styles.sub}>
                   {item.data.tipoAnimal} · {item.data.raza}

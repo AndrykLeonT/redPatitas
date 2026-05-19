@@ -19,6 +19,7 @@ import { db } from "../config/firebase";
 import { ThemeColors, useTheme } from "../context/ThemeContext";
 import { useShake } from "../hooks/useShake";
 import { Usuario } from "../models/firebaseModels";
+import { prepararDatosOffline } from "../services/syncService";
 import { AVATARES } from "../utils/avatars";
 
 export default function RegistroScreen() {
@@ -117,6 +118,13 @@ export default function RegistroScreen() {
         ["userEmail", emailNormalizado],
         ["userId", uid],
       ]);
+
+      // Cachea el perfil recién creado en SQLite para soporte offline
+      try {
+        await prepararDatosOffline(uid);
+      } catch (e) {
+        console.warn("No se pudo preparar la cache local tras registro. Continuando…", e);
+      }
 
       router.replace("/(drawer)/(tabs)");
     } catch (e: any) {

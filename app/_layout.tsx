@@ -12,6 +12,10 @@ import React, { useEffect, useState } from "react";
 import { Image, StyleSheet, View } from "react-native";
 
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
+import { initLocalDb } from "../database/localDb";
+
+// Inicializa SQLite una sola vez al cargar el módulo (antes del primer render).
+initLocalDb();
 
 function RootNavigation() {
   const { isDarkMode } = useTheme();

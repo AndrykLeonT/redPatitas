@@ -16,6 +16,7 @@ import {
 import { db } from "../config/firebase";
 import { ThemeColors, useTheme } from "../context/ThemeContext";
 import { useShake } from "../hooks/useShake";
+import { prepararDatosOffline } from "../services/syncService";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -25,6 +26,7 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [isChecking, setIsChecking] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState("");
 
   // ✅ Comprueba si hay sesión guardada — solo redirige si el rol es válido
   // (no "guest" sin sesión activa, y no un string vacío por bug de escritura)
@@ -43,7 +45,7 @@ export default function LoginScreen() {
       }
     };
     checkSession();
-  }, []);
+  }, [router]);
 
   useShake(() => {
     setEmail("");
@@ -105,12 +107,24 @@ export default function LoginScreen() {
         ["userId", uidEncontrado],
       ]);
 
+      // Descarga datos personales del usuario y los cachea en SQLite
+      // para que la app funcione cuando se pierda la conexión.
+      // Si falla, no bloquea el login: el usuario podrá entrar y se
+      // intentará refrescar cuando vuelva la conexión.
+      try {
+        setLoadingStatus("Preparando datos locales...");
+        await prepararDatosOffline(uidEncontrado);
+      } catch (e) {
+        console.warn("No se pudo preparar la cache local. Continuando…", e);
+      }
+
       router.replace("/(drawer)/(tabs)");
     } catch (e: any) {
       console.error(e);
       Alert.alert("Error", "Error al iniciar sesión. Intenta de nuevo.");
     } finally {
       setIsLoading(false);
+      setLoadingStatus("");
     }
   };
 
@@ -165,7 +179,10 @@ export default function LoginScreen() {
           disabled={isLoading}
         >
           {isLoading ? (
-            <ActivityIndicator color="#FFF" />
+            <View style={{ alignItems: "center", gap: 4 }}>
+              <ActivityIndicator color="#FFF" />
+              {loadingStatus ? <Text style={styles.loadingStatusText}>{loadingStatus}</Text> : null}
+            </View>
           ) : (
             <Text style={styles.btnText}>ENTRAR</Text>
           )}
@@ -228,6 +245,7 @@ const makeStyles = (colors: ThemeColors, isDarkMode: boolean) =>
       elevation: 2,
     },
     btnText: { color: colors.textInverse, fontWeight: "bold", fontSize: 16 },
+    loadingStatusText: { color: colors.textInverse, fontSize: 11 },
     opcionesExtras: { marginTop: 20 },
     btnSecundario: { alignItems: "center", paddingVertical: 10 },
     btnSecundarioText: { color: colors.accent, fontWeight: "bold", fontSize: 15 },

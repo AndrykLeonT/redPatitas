@@ -2,7 +2,6 @@ import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { push, ref } from "firebase/database";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -16,19 +15,24 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { db } from "../../config/firebase";
+import OfflineBanner from "../../components/OfflineBanner";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
+import { registrarCambioPendiente } from "../../database/cambiosPendientes";
+import { recalcularYGuardarEstadisticas } from "../../database/estadisticasLocal";
+import { nuevoIdLocal } from "../../database/localDb";
+import { guardarMascotaLocal } from "../../database/mascotasLocal";
+import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { Mascota } from "../../models/firebaseModels";
+import { subirImagen } from "../../services/cloudinaryService";
+import { crearMascotaEnFirebase } from "../../services/firebasePersonalService";
 
-const CLOUD_NAME = "dwlbornu8";
-const UPLOAD_PRESET = "uploadRedPatitas";
-const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
 const MAX_FOTOS = 5;
 
 export default function NuevaMascota() {
   const router = useRouter();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
+  const { isConnected } = useNetworkStatus();
 
   const [nombre, setNombre] = useState("");
   const [tipoAnimal, setTipoAnimal] = useState("");
@@ -70,16 +74,6 @@ export default function NuevaMascota() {
     setFotosLocales((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const uploadImage = async (uri: string): Promise<string> => {
-    const formData = new FormData();
-    formData.append("file", { uri, type: "image/jpeg", name: "photo.jpg" } as any);
-    formData.append("upload_preset", UPLOAD_PRESET);
-    const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
-    const data = await res.json();
-    if (!data.secure_url) throw new Error(data.error?.message ?? "Error al subir imagen");
-    return data.secure_url;
-  };
-
   const guardar = async () => {
     if (!nombre.trim() || !tipoAnimal.trim() || !raza.trim() || !edad || !peso) {
       Alert.alert("Error", "Nombre, tipo, raza, edad y peso son obligatorios.");
@@ -100,10 +94,49 @@ export default function NuevaMascota() {
       const userId = await AsyncStorage.getItem("userId");
       if (!userId) { Alert.alert("Error", "No hay sesión activa."); return; }
 
+      // ── Offline: guardar en SQLite con URIs locales, registrar cambio pendiente ──
+      if (isConnected === false) {
+        // Las fotos quedan como URIs locales (file://...) — subirFotosLocales
+        // las convertirá a URLs de Cloudinary al sincronizar.
+        const fotosLocalesRecord: Record<string, string> = {};
+        for (let i = 0; i < fotosLocales.length; i++) {
+          fotosLocalesRecord[`foto_${Date.now()}_${i}`] = fotosLocales[i];
+        }
+
+        const nueva: Mascota = {
+          idUsuario: userId,
+          nombre: nombre.trim(),
+          tipoAnimal: tipoAnimal.trim(),
+          raza: raza.trim(),
+          sexo,
+          edad: edadNum,
+          peso: pesoNum,
+          esterilizado,
+          fechaNacimiento: fechaNacimiento.trim(),
+          fechaRegistro: new Date().toISOString(),
+          comportamiento: comportamiento.trim(),
+          rasgosParticulares: rasgosParticulares.trim(),
+          enfermedades: {},
+          vacunas: {},
+          fotos: fotosLocalesRecord,
+        };
+        const idLocal = nuevoIdLocal();
+        guardarMascotaLocal(idLocal, nueva, { pendienteSync: true, creadoLocal: true });
+        registrarCambioPendiente(userId, "mascota", idLocal, "crear", nueva);
+        recalcularYGuardarEstadisticas(userId);
+        Alert.alert(
+          "Mascota guardada localmente",
+          "Se sincronizará cuando vuelva la conexión.",
+          [{ text: "OK", onPress: () => router.back() }],
+        );
+        return;
+      }
+
+      // ── Online: subir fotos a Cloudinary, push a Firebase, cachear en SQLite ──
       const fotosRecord: Record<string, string> = {};
       for (let i = 0; i < fotosLocales.length; i++) {
         setLoadingStatus(`Subiendo foto ${i + 1} de ${fotosLocales.length}...`);
-        const url = await uploadImage(fotosLocales[i]);
+        const url = await subirImagen(fotosLocales[i]);
         fotosRecord[`foto_${Date.now()}_${i}`] = url;
       }
 
@@ -125,7 +158,9 @@ export default function NuevaMascota() {
         vacunas: {},
         fotos: fotosRecord,
       };
-      await push(ref(db, "mascotas"), nueva);
+      const idFirebase = await crearMascotaEnFirebase(nueva);
+      guardarMascotaLocal(idFirebase, nueva);
+      recalcularYGuardarEstadisticas(userId);
       Alert.alert("¡Listo!", "Mascota registrada correctamente.", [
         { text: "OK", onPress: () => router.back() },
       ]);
@@ -148,6 +183,8 @@ export default function NuevaMascota() {
           headerTitleStyle: { color: colors.text, fontWeight: "bold" },
         }}
       />
+
+      {isConnected === false && <OfflineBanner />}
 
       {/* Información básica */}
       <View style={styles.card}>

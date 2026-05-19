@@ -12,11 +12,21 @@ import {
   Text,
   View,
 } from "react-native";
+import OfflineBanner from "../../components/OfflineBanner";
+import PendingSyncBadge from "../../components/PendingSyncBadge";
 import { db } from "../../config/firebase";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
+import { listarPublicacionesPorUsuario } from "../../database/publicacionesLocal";
+import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { Publicacion } from "../../models/firebaseModels";
+import { cachePublicacionDesdeFirebase } from "../../services/syncService";
 
-type PubItem = { id: string; data: Publicacion };
+type PubItem = {
+  id: string;
+  data: Publicacion;
+  pendienteSync?: boolean;
+  creadoLocal?: boolean;
+};
 
 const TIPO_LABEL: Record<string, string> = {
   reporte: "Reporte", perdidos: "Perdidos", recreacion: "Recreación",
@@ -29,6 +39,7 @@ export default function MisPublicaciones() {
   const router = useRouter();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
+  const { isConnected } = useNetworkStatus();
   const [publicaciones, setPublicaciones] = useState<PubItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -36,25 +47,53 @@ export default function MisPublicaciones() {
     setIsLoading(true);
     try {
       const userId = await AsyncStorage.getItem("userId");
-      if (!userId) return;
-      const snap = await get(ref(db, "publicaciones"));
-      const arr: PubItem[] = [];
-      if (snap.exists()) {
-        snap.forEach((child) => {
-          const p = child.val() as Publicacion;
-          if (p.idUsuario === userId) arr.push({ id: child.key!, data: p });
-        });
+      if (!userId) {
+        setIsLoading(false);
+        return;
       }
-      arr.sort((a, b) =>
-        new Date(b.data.fechaRegistro).getTime() - new Date(a.data.fechaRegistro).getTime()
-      );
-      setPublicaciones(arr);
+
+      const cargarDesdeLocal = () => {
+        // listarPublicacionesPorUsuario ya filtra eliminadoLocal=0 y ordena por fechaRegistro DESC
+        const locales = listarPublicacionesPorUsuario(userId).map((p) => {
+          const { id, pendienteSync, creadoLocal, eliminadoLocal, ...data } = p;
+          return { id, data: data as Publicacion, pendienteSync, creadoLocal };
+        });
+        setPublicaciones(locales);
+      };
+
+      // Sin conexión: solo SQLite
+      if (isConnected === false) {
+        cargarDesdeLocal();
+        return;
+      }
+
+      // Con conexión: Firebase primero, fallback a SQLite si falla
+      try {
+        const snap = await get(ref(db, "publicaciones"));
+        const arr: PubItem[] = [];
+        if (snap.exists()) {
+          snap.forEach((child) => {
+            const p = child.val() as Publicacion;
+            if (p.idUsuario === userId) {
+              arr.push({ id: child.key!, data: p });
+              cachePublicacionDesdeFirebase(child.key!, p);
+            }
+          });
+        }
+        arr.sort((a, b) =>
+          new Date(b.data.fechaRegistro).getTime() - new Date(a.data.fechaRegistro).getTime()
+        );
+        setPublicaciones(arr);
+      } catch (firebaseErr) {
+        console.warn("Firebase falló al cargar publicaciones, fallback a SQLite", firebaseErr);
+        cargarDesdeLocal();
+      }
     } catch (e) {
       console.error("Error cargando publicaciones:", e);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isConnected]);
 
   useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
 
@@ -68,6 +107,7 @@ export default function MisPublicaciones() {
 
   return (
     <View style={styles.bg}>
+      {isConnected === false && <OfflineBanner />}
       <Pressable style={styles.btnNueva} onPress={() => router.push("/publicacion/nueva" as any)}>
         <Ionicons name="add-circle-outline" size={20} color={colors.textInverse} />
         <Text style={styles.btnNuevaText}>Nueva Publicación</Text>
@@ -86,6 +126,7 @@ export default function MisPublicaciones() {
         }
         renderItem={({ item }) => {
           const primeraFoto = item.data.fotos ? Object.values(item.data.fotos)[0] : null;
+          const showBadge = item.pendienteSync || item.creadoLocal;
           return (
             <Pressable
               style={styles.card}
@@ -98,9 +139,12 @@ export default function MisPublicaciones() {
                   <Ionicons name="image-outline" size={24} color={colors.textSecondary} />
                 </View>
               )}
-              <View style={{ flex: 1, paddingHorizontal: 12 }}>
-                <View style={[styles.tag, { backgroundColor: TIPO_COLOR[item.data.tipo] ?? "#6B7280" }]}>
-                  <Text style={styles.tagText}>{TIPO_LABEL[item.data.tipo] ?? item.data.tipo}</Text>
+              <View style={{ flex: 1, paddingHorizontal: 12, gap: 2 }}>
+                <View style={styles.tagRow}>
+                  <View style={[styles.tag, { backgroundColor: TIPO_COLOR[item.data.tipo] ?? "#6B7280" }]}>
+                    <Text style={styles.tagText}>{TIPO_LABEL[item.data.tipo] ?? item.data.tipo}</Text>
+                  </View>
+                  {showBadge && <PendingSyncBadge />}
                 </View>
                 <Text style={styles.descripcion} numberOfLines={2}>
                   {item.data.descripcion || "Sin descripción"}
@@ -150,12 +194,12 @@ const makeStyles = (colors: ThemeColors) =>
     },
     foto: { width: 80, height: 80 },
     fotoPlaceholder: { backgroundColor: colors.surfaceAlt, justifyContent: "center", alignItems: "center" },
+    tagRow: { flexDirection: "row", alignItems: "center", gap: 6, marginBottom: 4 },
     tag: {
       borderRadius: 8,
       paddingHorizontal: 8,
       paddingVertical: 2,
       alignSelf: "flex-start",
-      marginBottom: 4,
     },
     tagText: { color: "#FFF", fontSize: 11, fontWeight: "bold" },
     descripcion: { fontSize: 14, color: colors.text, fontWeight: "500" },

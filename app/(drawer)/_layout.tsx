@@ -10,7 +10,9 @@ import { useFocusEffect } from "expo-router";
 import { Drawer } from "expo-router/drawer";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, AppStateStatus, Image, StyleSheet, Text, View } from "react-native";
+import SyncChangesModal from "../../components/SyncChangesModal";
 import { useTheme } from "../../context/ThemeContext";
+import { usePendingSync } from "../../hooks/usePendingSync";
 import { AVATARES } from "../../utils/avatars";
 
 // ─── Helper: resuelve el source de imagen de forma segura ─────────────────────
@@ -129,6 +131,7 @@ export default function DrawerLayout() {
   const [userName, setUserName] = useState<string | null>(null);
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const { isDarkMode, toggleTheme, colors } = useTheme();
+  const { shouldPrompt, pendingCount, isSyncing, dismiss, runSync } = usePendingSync();
   const appState = useRef(AppState.currentState);
 
   const fetchSession = useCallback(async () => {
@@ -183,73 +186,92 @@ export default function DrawerLayout() {
   );
 
   return (
-    <Drawer
-      drawerContent={(props) => (
-        <CustomDrawerContent
-          {...props}
-          role={role}
-          userName={userName}
-          userAvatar={userAvatar}
-          isDarkMode={isDarkMode}
-          toggleTheme={toggleTheme}
-          colors={colors}
-          onSessionChange={handleSessionChange}
+    <>
+      <Drawer
+        drawerContent={(props) => (
+          <CustomDrawerContent
+            {...props}
+            role={role}
+            userName={userName}
+            userAvatar={userAvatar}
+            isDarkMode={isDarkMode}
+            toggleTheme={toggleTheme}
+            colors={colors}
+            onSessionChange={handleSessionChange}
+          />
+        )}
+        screenOptions={{
+          headerStyle: { backgroundColor: isDarkMode ? colors.background : colors.accent },
+          headerTintColor: "#fff",
+          drawerActiveTintColor: colors.accent,
+          drawerInactiveTintColor: colors.textSecondary,
+          drawerStyle: {
+            backgroundColor: colors.background,
+          },
+        }}
+      >
+        <Drawer.Screen
+          name="(tabs)"
+          options={{
+            headerTitle: "RedPatitas",
+            drawerLabel: "Inicio",
+            drawerIcon: ({ color }) => (
+              <Ionicons name="home-outline" size={24} color={color} />
+            ),
+          }}
         />
-      )}
-      screenOptions={{
-        headerStyle: { backgroundColor: isDarkMode ? colors.background : colors.accent },
-        headerTintColor: "#fff",
-        drawerActiveTintColor: colors.accent,
-        drawerInactiveTintColor: colors.textSecondary,
-        drawerStyle: {
-          backgroundColor: colors.background,
-        },
-      }}
-    >
-      <Drawer.Screen
-        name="(tabs)"
-        options={{
-          headerTitle: "RedPatitas",
-          drawerLabel: "Inicio",
-          drawerIcon: ({ color }) => (
-            <Ionicons name="home-outline" size={24} color={color} />
-          ),
-        }}
-      />
-      <Drawer.Screen
-        name="misMascotas"
-        options={{
-          headerTitle: "Mis Mascotas",
-          drawerLabel: "Mis Mascotas",
-          drawerItemStyle: (!role || role === "guest") ? { display: "none" } : {},
-          drawerIcon: ({ color }) => (
-            <Ionicons name="paw-outline" size={24} color={color} />
-          ),
-        }}
-      />
-      <Drawer.Screen
-        name="perfil"
-        options={{
-          headerTitle: "Mi Perfil",
-          drawerLabel: "Mi Perfil",
-          drawerItemStyle: (!role || role === "guest") ? { display: "none" } : {},
-          drawerIcon: ({ color }) => (
-            <Ionicons name="person-circle-outline" size={24} color={color} />
-          ),
-        }}
-      />
+        <Drawer.Screen
+          name="misMascotas"
+          options={{
+            headerTitle: "Mis Mascotas",
+            drawerLabel: "Mis Mascotas",
+            drawerItemStyle: (!role || role === "guest") ? { display: "none" } : {},
+            drawerIcon: ({ color }) => (
+              <Ionicons name="paw-outline" size={24} color={color} />
+            ),
+          }}
+        />
+        <Drawer.Screen
+          name="perfil"
+          options={{
+            headerTitle: "Mi Perfil",
+            drawerLabel: "Mi Perfil",
+            drawerItemStyle: (!role || role === "guest") ? { display: "none" } : {},
+            drawerIcon: ({ color }) => (
+              <Ionicons name="person-circle-outline" size={24} color={color} />
+            ),
+          }}
+        />
       <Drawer.Screen
         name="misPublicaciones"
         options={{
           headerTitle: "Mis Publicaciones",
           drawerLabel: "Mis Publicaciones",
-          drawerItemStyle: { display: "none" },
-          drawerIcon: ({ color }) => (
-            <Ionicons name="newspaper-outline" size={24} color={color} />
+            drawerItemStyle: { display: "none" },
+            drawerIcon: ({ color }) => (
+              <Ionicons name="newspaper-outline" size={24} color={color} />
           ),
         }}
       />
-    </Drawer>
+        <Drawer.Screen
+          name="reportesGenerados"
+          options={{
+            headerTitle: "Reportes generados",
+            drawerLabel: "Reportes generados",
+            drawerIcon: ({ color }) => (
+              <Ionicons name="document-text-outline" size={24} color={color} />
+            ),
+          }}
+        />
+      </Drawer>
+      <SyncChangesModal
+        visible={shouldPrompt}
+        pendingCount={pendingCount}
+        isSyncing={isSyncing}
+        onDismiss={dismiss}
+        onConfirm={runSync}
+      />
+    </>
   );
 }
 

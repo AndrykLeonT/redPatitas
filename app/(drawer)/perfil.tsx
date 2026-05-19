@@ -15,9 +15,17 @@ import {
   View,
 } from "react-native";
 import { BarChart, LineChart, PieChart } from "react-native-gifted-charts";
+import OfflineBanner from "../../components/OfflineBanner";
 import { db } from "../../config/firebase";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
+import { guardarAdopcionLocal, listarAdopcionesPorUsuario } from "../../database/adopcionesLocal";
+import { recalcularYGuardarEstadisticas } from "../../database/estadisticasLocal";
+import { listarMascotasPorUsuario, MascotaConMeta } from "../../database/mascotasLocal";
+import { listarPublicacionesPorUsuario, PublicacionConMeta } from "../../database/publicacionesLocal";
+import { guardarUsuarioLocal, obtenerUsuarioLocal } from "../../database/usuariosLocal";
+import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { Adopcion, Mascota, Publicacion, Usuario } from "../../models/firebaseModels";
+import { cacheMascotaDesdeFirebase, cachePublicacionDesdeFirebase } from "../../services/syncService";
 import { AVATARES } from "../../utils/avatars";
 
 type MascotaItem = { id: string; data: Mascota };
@@ -43,10 +51,22 @@ function resolverAvatar(fotoPerfil: string | null) {
   return (AVATARES as any)[fotoPerfil] ?? (AVATARES as any)["default"];
 }
 
+// Convierte la fila local (con metadatos de sync) al shape que usa la pantalla.
+function mascotaConMetaToItem(m: MascotaConMeta): MascotaItem {
+  const { id, pendienteSync, creadoLocal, eliminadoLocal, ...data } = m;
+  return { id, data: data as Mascota };
+}
+
+function publicacionConMetaToItem(p: PublicacionConMeta): PubItem {
+  const { id, pendienteSync, creadoLocal, eliminadoLocal, ...data } = p;
+  return { id, data: data as Publicacion };
+}
+
 export default function PerfilScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
+  const { isConnected } = useNetworkStatus();
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [mascotas, setMascotas] = useState<MascotaItem[]>([]);
   const [publicaciones, setPublicaciones] = useState<PubItem[]>([]);
@@ -62,53 +82,107 @@ export default function PerfilScreen() {
         AsyncStorage.getItem("userId"),
         AsyncStorage.getItem("userRole"),
       ]);
-      if (!userId) return;
+      if (!userId) {
+        setIsLoading(false);
+        return;
+      }
       setUserRole(role);
 
-      const [userSnap, mascSnap, pubSnap, adoptSnap] = await Promise.all([
-        get(ref(db, `usuarios/${userId}`)),
-        get(ref(db, "mascotas")),
-        get(ref(db, "publicaciones")),
-        get(ref(db, "adopciones")),
-      ]);
+      const cargarDesdeLocal = () => {
+        const userLocal = obtenerUsuarioLocal(userId);
+        if (userLocal) setUsuario(userLocal);
 
-      if (userSnap.exists()) setUsuario(userSnap.val() as Usuario);
+        setMascotas(listarMascotasPorUsuario(userId).map(mascotaConMetaToItem));
 
-      const mascotasArr: MascotaItem[] = [];
-      if (mascSnap.exists()) {
-        mascSnap.forEach((child) => {
-          const m = child.val() as Mascota;
-          if (m.idUsuario === userId) mascotasArr.push({ id: child.key!, data: m });
-        });
+        const pubsLocal = listarPublicacionesPorUsuario(userId)
+          .map(publicacionConMetaToItem)
+          .sort((a, b) =>
+            new Date(b.data.fechaRegistro).getTime() - new Date(a.data.fechaRegistro).getTime()
+          );
+        setPublicaciones(pubsLocal);
+
+        const adoptLocal = listarAdopcionesPorUsuario(userId).map((a) => ({
+          id: a.id,
+          data: {
+            idMascota: a.idMascota, idUsuario: a.idUsuario, tipoAnimal: a.tipoAnimal,
+            nombreMascota: a.nombreMascota, via: a.via, fechaAdopcion: a.fechaAdopcion,
+          } as Adopcion,
+        }));
+        setAdopciones(adoptLocal);
+      };
+
+      // Sin conexión: solo SQLite
+      if (isConnected === false) {
+        cargarDesdeLocal();
+        return;
       }
-      setMascotas(mascotasArr);
 
-      const pubsArr: PubItem[] = [];
-      if (pubSnap.exists()) {
-        pubSnap.forEach((child) => {
-          const p = child.val() as Publicacion;
-          if (p.idUsuario === userId) pubsArr.push({ id: child.key!, data: p });
-        });
-      }
-      pubsArr.sort((a, b) =>
-        new Date(b.data.fechaRegistro).getTime() - new Date(a.data.fechaRegistro).getTime()
-      );
-      setPublicaciones(pubsArr);
+      // Con conexión (o aún sin determinar): Firebase primero, fallback a SQLite si falla
+      try {
+        const [userSnap, mascSnap, pubSnap, adoptSnap] = await Promise.all([
+          get(ref(db, `usuarios/${userId}`)),
+          get(ref(db, "mascotas")),
+          get(ref(db, "publicaciones")),
+          get(ref(db, "adopciones")),
+        ]);
 
-      const adoptArr: { id: string; data: Adopcion }[] = [];
-      if (adoptSnap.exists()) {
-        adoptSnap.forEach((child) => {
-          const a = child.val() as Adopcion;
-          if (a.idUsuario === userId) adoptArr.push({ id: child.key!, data: a });
-        });
+        if (userSnap.exists()) {
+          const u = userSnap.val() as Usuario;
+          setUsuario(u);
+          guardarUsuarioLocal(userId, u);
+        }
+
+        const mascotasArr: MascotaItem[] = [];
+        if (mascSnap.exists()) {
+          mascSnap.forEach((child) => {
+            const m = child.val() as Mascota;
+            if (m.idUsuario === userId) {
+              mascotasArr.push({ id: child.key!, data: m });
+              cacheMascotaDesdeFirebase(child.key!, m);
+            }
+          });
+        }
+        setMascotas(mascotasArr);
+
+        const pubsArr: PubItem[] = [];
+        if (pubSnap.exists()) {
+          pubSnap.forEach((child) => {
+            const p = child.val() as Publicacion;
+            if (p.idUsuario === userId) {
+              pubsArr.push({ id: child.key!, data: p });
+              cachePublicacionDesdeFirebase(child.key!, p);
+            }
+          });
+        }
+        pubsArr.sort((a, b) =>
+          new Date(b.data.fechaRegistro).getTime() - new Date(a.data.fechaRegistro).getTime()
+        );
+        setPublicaciones(pubsArr);
+
+        const adoptArr: { id: string; data: Adopcion }[] = [];
+        if (adoptSnap.exists()) {
+          adoptSnap.forEach((child) => {
+            const a = child.val() as Adopcion;
+            if (a.idUsuario === userId) {
+              adoptArr.push({ id: child.key!, data: a });
+              guardarAdopcionLocal(child.key!, a);
+            }
+          });
+        }
+        setAdopciones(adoptArr);
+
+        // Recalcular estadísticas con el snapshot fresco
+        recalcularYGuardarEstadisticas(userId);
+      } catch (firebaseErr) {
+        console.warn("Firebase falló al cargar perfil, fallback a SQLite", firebaseErr);
+        cargarDesdeLocal();
       }
-      setAdopciones(adoptArr);
     } catch (e) {
       console.error("Error cargando perfil:", e);
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [isConnected]);
 
   useFocusEffect(useCallback(() => { cargar(); }, [cargar]));
 
@@ -199,6 +273,13 @@ export default function PerfilScreen() {
   }, [adopciones]);
 
   const eliminarCuenta = () => {
+    if (isConnected === false) {
+      Alert.alert(
+        "Sin conexión",
+        "Eliminar tu cuenta requiere conexión a internet.",
+      );
+      return;
+    }
     Alert.alert(
       "Eliminar cuenta",
       "Se eliminarán tu perfil, todas tus mascotas y publicaciones. Esta acción no se puede deshacer.",
@@ -257,6 +338,7 @@ export default function PerfilScreen() {
 
   return (
     <ScrollView style={styles.bg} contentContainerStyle={styles.content}>
+      {isConnected === false && <OfflineBanner />}
 
       {/* Header */}
       <View style={styles.headerCard}>

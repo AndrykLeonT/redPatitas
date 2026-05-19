@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
-import { get, push, ref } from "firebase/database";
+import { get, ref } from "firebase/database";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -18,15 +18,22 @@ import {
   View,
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
+import OfflineBanner from "../../components/OfflineBanner";
 import { db } from "../../config/firebase";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
+import { registrarCambioPendiente } from "../../database/cambiosPendientes";
+import { recalcularYGuardarEstadisticas } from "../../database/estadisticasLocal";
+import { nuevoIdLocal } from "../../database/localDb";
+import { listarMascotasPorUsuario } from "../../database/mascotasLocal";
+import { guardarPublicacionLocal } from "../../database/publicacionesLocal";
+import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { Mascota, Publicacion } from "../../models/firebaseModels";
+import { subirImagen } from "../../services/cloudinaryService";
+import { crearPublicacionEnFirebase } from "../../services/firebasePersonalService";
+import { cacheMascotaDesdeFirebase } from "../../services/syncService";
 
 type MascotaOpt = { id: string; nombre: string };
 
-const CLOUD_NAME = "dwlbornu8";
-const UPLOAD_PRESET = "uploadRedPatitas";
-const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`;
 const MAX_FOTOS = 5;
 
 const TIPOS = [
@@ -46,6 +53,7 @@ export default function NuevaPublicacion() {
   const router = useRouter();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
+  const { isConnected } = useNetworkStatus();
 
   const [tipo, setTipo] = useState<"reporte" | "perdidos" | "recreacion">("reporte");
   const [descripcion, setDescripcion] = useState("");
@@ -67,12 +75,22 @@ export default function NuevaPublicacion() {
       try {
         const userId = await AsyncStorage.getItem("userId");
         if (userId) {
+          if (isConnected === false) {
+            const locales = listarMascotasPorUsuario(userId);
+            setMascotas(locales.map((m) => ({ id: m.id, nombre: m.nombre })));
+            return;
+          }
+
           const snap = await get(ref(db, "mascotas"));
           const opts: MascotaOpt[] = [];
           if (snap.exists()) {
             snap.forEach((child) => {
               const m = child.val() as Mascota;
-              if (m.idUsuario === userId) opts.push({ id: child.key!, nombre: m.nombre });
+              if (m.idUsuario === userId) {
+                const idMascotaFirebase = child.key!;
+                opts.push({ id: idMascotaFirebase, nombre: m.nombre });
+                cacheMascotaDesdeFirebase(idMascotaFirebase, m);
+              }
             });
           }
           setMascotas(opts);
@@ -98,7 +116,7 @@ export default function NuevaPublicacion() {
         }
       } catch { /* keep fallback */ }
     })();
-  }, []);
+  }, [isConnected]);
 
   const usarUbicacionActual = async () => {
     try {
@@ -150,17 +168,6 @@ export default function NuevaPublicacion() {
     setFotosLocales((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const uploadImage = async (uri: string): Promise<string> => {
-    const formData = new FormData();
-    formData.append("file", { uri, type: "image/jpeg", name: "photo.jpg" } as any);
-    formData.append("upload_preset", UPLOAD_PRESET);
-
-    const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
-    const data = await res.json();
-    if (!data.secure_url) throw new Error(data.error?.message ?? "Error al subir imagen");
-    return data.secure_url;
-  };
-
   const publicar = async () => {
     if (!descripcion.trim()) {
       Alert.alert("Error", "La descripción es obligatoria.");
@@ -171,10 +178,39 @@ export default function NuevaPublicacion() {
       const userId = await AsyncStorage.getItem("userId");
       if (!userId) { Alert.alert("Error", "No hay sesión activa."); return; }
 
+      if (isConnected === false) {
+        const fotosRecord: Record<string, string> = {};
+        for (let i = 0; i < fotosLocales.length; i++) {
+          fotosRecord[`foto_${Date.now()}_${i}`] = fotosLocales[i];
+        }
+
+        const nueva: Publicacion = {
+          idUsuario: userId,
+          idMascota: idMascota ?? "",
+          tipo,
+          descripcion: descripcion.trim(),
+          fechaRegistro: new Date().toISOString(),
+          likes: 0,
+          fotos: fotosRecord,
+          estado: "activo",
+          ...(ubicacion ? { ubicacion } : {}),
+        };
+        const idLocal = nuevoIdLocal();
+        guardarPublicacionLocal(idLocal, nueva, { pendienteSync: true, creadoLocal: true });
+        registrarCambioPendiente(userId, "publicacion", idLocal, "crear", nueva);
+        recalcularYGuardarEstadisticas(userId);
+        Alert.alert(
+          "Publicación guardada localmente",
+          "Se sincronizará cuando vuelva la conexión.",
+          [{ text: "OK", onPress: () => router.back() }],
+        );
+        return;
+      }
+
       const fotosRecord: Record<string, string> = {};
       for (let i = 0; i < fotosLocales.length; i++) {
         setLoadingStatus(`Subiendo foto ${i + 1} de ${fotosLocales.length}...`);
-        const url = await uploadImage(fotosLocales[i]);
+        const url = await subirImagen(fotosLocales[i]);
         fotosRecord[`foto_${Date.now()}_${i}`] = url;
       }
 
@@ -190,7 +226,9 @@ export default function NuevaPublicacion() {
         estado: "activo",
         ...(ubicacion ? { ubicacion } : {}),
       };
-      await push(ref(db, "publicaciones"), nueva);
+      const idFirebase = await crearPublicacionEnFirebase(nueva);
+      guardarPublicacionLocal(idFirebase, nueva);
+      recalcularYGuardarEstadisticas(userId);
       Alert.alert("¡Publicado!", "Tu publicación fue creada correctamente.", [
         { text: "OK", onPress: () => router.back() },
       ]);
@@ -214,6 +252,8 @@ export default function NuevaPublicacion() {
             headerTitleStyle: { color: colors.text, fontWeight: "bold" },
           }}
         />
+
+        {isConnected === false && <OfflineBanner />}
 
         {/* Tipo */}
         <View style={styles.card}>
