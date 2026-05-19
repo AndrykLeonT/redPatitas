@@ -50,8 +50,18 @@ export interface Publicacion {
   likes: number;
   fotos: Record<string, string>;
   estado: string;
+  fechaResolucion?: string;
   ubicacion?: {
     latitude: number;
     longitude: number;
   };
+}
+
+export interface Adopcion {
+  idMascota: string;
+  idUsuario: string;
+  tipoAnimal: string;
+  nombreMascota: string;
+  via: 'app' | 'externo';
+  fechaAdopcion: string;
 }

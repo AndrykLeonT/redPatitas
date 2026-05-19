@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { get, ref, remove } from "firebase/database";
+import { get, ref, remove, update } from "firebase/database";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,6 +17,7 @@ import {
   View,
 } from "react-native";
 import { db } from "../../config/firebase";
+import { ThemeColors, useTheme } from "../../context/ThemeContext";
 import { Mascota, Publicacion } from "../../models/firebaseModels";
 
 const { width, height } = Dimensions.get("window");
@@ -31,6 +32,8 @@ const TIPO_COLOR: Record<string, string> = {
 export default function PublicacionDetalle() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [publicacion, setPublicacion] = useState<Publicacion | null>(null);
   const [mascota, setMascota] = useState<Mascota | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -38,6 +41,7 @@ export default function PublicacionDetalle() {
   const [userId, setUserId] = useState<string | null>(null);
   const [fotoViewer, setFotoViewer] = useState<{ fotos: string[]; index: number } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [resolving, setResolving] = useState(false);
 
   useEffect(() => {
     AsyncStorage.getItem("userId").then(setUserId);
@@ -64,6 +68,36 @@ export default function PublicacionDetalle() {
       }
     })();
   }, [id]);
+
+  const resolverPublicacion = () => {
+    Alert.alert(
+      "Marcar como encontrado",
+      `¿Confirmas que ${mascota?.nombre ?? "la mascota"} ya fue encontrada?`,
+      [
+        { text: "Cancelar", style: "cancel" },
+        {
+          text: "Confirmar",
+          onPress: async () => {
+            setResolving(true);
+            try {
+              const fechaResolucion = new Date().toISOString();
+              await update(ref(db, `publicaciones/${id}`), {
+                estado: "resuelto",
+                fechaResolucion,
+              });
+              setPublicacion((prev) =>
+                prev ? { ...prev, estado: "resuelto", fechaResolucion } : prev
+              );
+            } catch {
+              Alert.alert("Error", "No se pudo actualizar la publicación.");
+            } finally {
+              setResolving(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const eliminar = () => {
     Alert.alert(
@@ -92,8 +126,8 @@ export default function PublicacionDetalle() {
   if (isLoading) {
     return (
       <View style={styles.centrado}>
-        <Stack.Screen options={{ title: "Cargando…", headerShown: true, headerTintColor: "#FF8C42" }} />
-        <ActivityIndicator size="large" color="#FF8C42" />
+        <Stack.Screen options={{ title: "Cargando…", headerShown: true, headerTintColor: colors.accent, headerStyle: { backgroundColor: colors.surface } }} />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -101,8 +135,8 @@ export default function PublicacionDetalle() {
   if (error || !publicacion) {
     return (
       <View style={styles.centrado}>
-        <Stack.Screen options={{ title: "Publicación", headerShown: true, headerTintColor: "#FF8C42" }} />
-        <Ionicons name="alert-circle-outline" size={56} color="#EF4444" />
+        <Stack.Screen options={{ title: "Publicación", headerShown: true, headerTintColor: colors.accent, headerStyle: { backgroundColor: colors.surface } }} />
+        <Ionicons name="alert-circle-outline" size={56} color={colors.danger} />
         <Text style={styles.errorText}>No se encontró la publicación.</Text>
       </View>
     );
@@ -120,13 +154,13 @@ export default function PublicacionDetalle() {
         options={{
           title: mascota?.nombre ?? "Publicación",
           headerShown: true,
-          headerTintColor: "#FF8C42",
-          headerStyle: { backgroundColor: "#FFF" },
-          headerTitleStyle: { color: "#2B2D42", fontWeight: "bold" },
+          headerTintColor: colors.accent,
+          headerStyle: { backgroundColor: colors.surface },
+          headerTitleStyle: { color: colors.text, fontWeight: "bold" },
           ...(esOwner && {
             headerRight: () => (
               <Pressable onPress={eliminar} style={{ marginRight: 12 }} disabled={deleting}>
-                <Ionicons name="trash-outline" size={22} color="#EF4444" />
+                <Ionicons name="trash-outline" size={22} color={colors.danger} />
               </Pressable>
             ),
           }),
@@ -214,8 +248,8 @@ export default function PublicacionDetalle() {
         />
       ) : (
         <View style={styles.fotoPlaceholder}>
-          <Ionicons name="image-outline" size={56} color="#D1D5DB" />
-          <Text style={{ color: "#9CA3AF", marginTop: 8 }}>Sin fotos</Text>
+          <Ionicons name="image-outline" size={56} color={colors.textSecondary} />
+          <Text style={{ color: colors.textSecondary, marginTop: 8 }}>Sin fotos</Text>
         </View>
       )}
 
@@ -239,7 +273,7 @@ export default function PublicacionDetalle() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Mascota</Text>
           <View style={styles.mascotaRow}>
-            <Ionicons name="paw" size={28} color="#FF8C42" style={{ marginRight: 10 }} />
+            <Ionicons name="paw" size={28} color={colors.accent} style={{ marginRight: 10 }} />
             <View>
               <Text style={styles.mascotaNombre}>{mascota.nombre}</Text>
               <Text style={styles.mascotaSub}>
@@ -269,7 +303,7 @@ export default function PublicacionDetalle() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Ubicación aproximada</Text>
           <View style={styles.ubicacionRow}>
-            <Ionicons name="location-outline" size={18} color="#4F6D7A" />
+            <Ionicons name="location-outline" size={18} color={colors.textSecondary} />
             <Text style={styles.ubicacionText}>
               {publicacion.ubicacion.latitude.toFixed(5)}, {publicacion.ubicacion.longitude.toFixed(5)}
             </Text>
@@ -280,10 +314,22 @@ export default function PublicacionDetalle() {
       {/* Likes */}
       <View style={styles.card}>
         <View style={styles.likesRow}>
-          <Ionicons name="heart" size={20} color="#EF4444" />
+          <Ionicons name="heart" size={20} color={colors.danger} />
           <Text style={styles.likesText}>{publicacion.likes ?? 0} personas están atentas</Text>
         </View>
       </View>
+
+      {/* Marcar como encontrado — solo dueño, tipo perdidos, no resuelto */}
+      {esOwner && tipo === "perdidos" && publicacion.estado !== "resuelto" && (
+        <Pressable
+          style={[styles.btnResolver, resolving && { opacity: 0.6 }]}
+          onPress={resolverPublicacion}
+          disabled={resolving}
+        >
+          <Ionicons name="checkmark-circle-outline" size={18} color="#10B981" />
+          <Text style={styles.btnResolverText}>Marcar como encontrado</Text>
+        </Pressable>
+      )}
 
       {/* Eliminar (solo dueño) */}
       {esOwner && (
@@ -292,7 +338,7 @@ export default function PublicacionDetalle() {
           onPress={eliminar}
           disabled={deleting}
         >
-          <Ionicons name="trash-outline" size={18} color="#EF4444" />
+          <Ionicons name="trash-outline" size={18} color={colors.danger} />
           <Text style={styles.btnEliminarText}>Eliminar publicación</Text>
         </Pressable>
       )}
@@ -300,76 +346,91 @@ export default function PublicacionDetalle() {
   );
 }
 
-const styles = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: "#FFF9F5" },
-  content: { paddingBottom: 30 },
-  centrado: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FFF9F5" },
-  errorText: { color: "#EF4444", fontSize: 16, marginTop: 12 },
-  foto: { width, height: 280, resizeMode: "cover" },
-  fotoPlaceholder: {
-    width: "100%", height: 200,
-    backgroundColor: "#F3F4F6",
-    justifyContent: "center", alignItems: "center",
-  },
-  headerInfo: {
-    backgroundColor: "#FFF",
-    padding: 16,
-    marginBottom: 12,
-    elevation: 2,
-    gap: 6,
-  },
-  tag: {
-    alignSelf: "flex-start",
-    borderRadius: 20,
-    paddingVertical: 4,
-    paddingHorizontal: 14,
-  },
-  tagText: { color: "#FFF", fontWeight: "bold", fontSize: 13 },
-  estado: { fontSize: 14, color: "#4F6D7A" },
-  fecha: { fontSize: 13, color: "#9CA3AF" },
-  card: {
-    backgroundColor: "#FFF",
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderRadius: 16,
-    padding: 16,
-    elevation: 2,
-  },
-  cardTitle: { fontSize: 15, fontWeight: "bold", color: "#FF8C42", marginBottom: 10 },
-  mascotaRow: { flexDirection: "row", alignItems: "flex-start" },
-  mascotaNombre: { fontSize: 18, fontWeight: "bold", color: "#2B2D42" },
-  mascotaSub: { fontSize: 13, color: "#4F6D7A", marginTop: 2 },
-  rasgos: { fontSize: 13, color: "#4F6D7A", marginTop: 10, fontStyle: "italic" },
-  descripcion: { fontSize: 14, color: "#4F6D7A", lineHeight: 22 },
-  ubicacionRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  ubicacionText: { fontSize: 14, color: "#4F6D7A" },
-  likesRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  likesText: { fontSize: 14, color: "#4F6D7A" },
-  btnEliminar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    marginHorizontal: 16,
-    marginTop: 8,
-    paddingVertical: 13,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: "#EF4444",
-    backgroundColor: "#FFF",
-  },
-  btnEliminarText: { color: "#EF4444", fontWeight: "bold", fontSize: 15 },
-  viewerBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.95)", justifyContent: "center" },
-  viewerClose: { position: "absolute", top: 48, right: 16, zIndex: 10, padding: 8 },
-  viewerContent: { flex: 1, justifyContent: "center", alignItems: "center" },
-  viewerImg: { width, height: height * 0.75 },
-  viewerNav: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 24,
-    paddingBottom: 40,
-    paddingTop: 16,
-  },
-  viewerCounter: { color: "#FFF", fontSize: 16 },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    bg: { flex: 1, backgroundColor: colors.background },
+    content: { paddingBottom: 30 },
+    centrado: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background },
+    errorText: { color: colors.danger, fontSize: 16, marginTop: 12 },
+    foto: { width, height: 280, resizeMode: "cover" },
+    fotoPlaceholder: {
+      width: "100%", height: 200,
+      backgroundColor: colors.surfaceAlt,
+      justifyContent: "center", alignItems: "center",
+    },
+    headerInfo: {
+      backgroundColor: colors.surface,
+      padding: 16,
+      marginBottom: 12,
+      elevation: 2,
+      gap: 6,
+    },
+    tag: {
+      alignSelf: "flex-start",
+      borderRadius: 20,
+      paddingVertical: 4,
+      paddingHorizontal: 14,
+    },
+    tagText: { color: "#FFF", fontWeight: "bold", fontSize: 13 },
+    estado: { fontSize: 14, color: colors.textSecondary },
+    fecha: { fontSize: 13, color: colors.textSecondary },
+    card: {
+      backgroundColor: colors.surface,
+      marginHorizontal: 16,
+      marginBottom: 12,
+      borderRadius: 16,
+      padding: 16,
+      elevation: 2,
+    },
+    cardTitle: { fontSize: 15, fontWeight: "bold", color: colors.accent, marginBottom: 10 },
+    mascotaRow: { flexDirection: "row", alignItems: "flex-start" },
+    mascotaNombre: { fontSize: 18, fontWeight: "bold", color: colors.text },
+    mascotaSub: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+    rasgos: { fontSize: 13, color: colors.textSecondary, marginTop: 10, fontStyle: "italic" },
+    descripcion: { fontSize: 14, color: colors.textSecondary, lineHeight: 22 },
+    ubicacionRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+    ubicacionText: { fontSize: 14, color: colors.textSecondary },
+    likesRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    likesText: { fontSize: 14, color: colors.textSecondary },
+    btnEliminar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      marginHorizontal: 16,
+      marginTop: 8,
+      paddingVertical: 13,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: colors.danger,
+      backgroundColor: colors.surface,
+    },
+    btnEliminarText: { color: colors.danger, fontWeight: "bold", fontSize: 15 },
+    btnResolver: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      marginHorizontal: 16,
+      marginTop: 8,
+      paddingVertical: 13,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: "#10B981",
+      backgroundColor: colors.surface,
+    },
+    btnResolverText: { color: "#10B981", fontWeight: "bold", fontSize: 15 },
+    viewerBg: { flex: 1, backgroundColor: "rgba(0,0,0,0.95)", justifyContent: "center" },
+    viewerClose: { position: "absolute", top: 48, right: 16, zIndex: 10, padding: 8 },
+    viewerContent: { flex: 1, justifyContent: "center", alignItems: "center" },
+    viewerImg: { width, height: height * 0.75 },
+    viewerNav: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 24,
+      paddingBottom: 40,
+      paddingTop: 16,
+    },
+    viewerCounter: { color: "#FFF", fontSize: 16 },
+  });

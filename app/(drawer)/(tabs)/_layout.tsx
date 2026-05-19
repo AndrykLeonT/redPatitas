@@ -1,14 +1,23 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { Image } from "react-native";
+import { useTheme } from "../../../context/ThemeContext";
 
 export default function TabsLayout() {
+  const { colors, isDarkMode } = useTheme();
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: "#BF7C48",
-        tabBarInactiveTintColor: "#6D5540",
-        tabBarStyle: { height: 60, paddingBottom: 10, paddingTop: 5, backgroundColor: "#F6F6F6" }
+        tabBarActiveTintColor: colors.accent,
+        tabBarInactiveTintColor: colors.textSecondary,
+        tabBarStyle: {
+          height: 60,
+          paddingBottom: 10,
+          paddingTop: 5,
+          backgroundColor: isDarkMode ? colors.surface : "#F6F6F6",
+          borderTopColor: colors.border,
+        },
       }}
     >
       <Tabs.Screen
@@ -34,6 +43,15 @@ export default function TabsLayout() {
               style={{ width: 24, height: 24, tintColor: color }}
               resizeMode="contain"
             />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="estadisticas"
+        options={{
+          title: "Estadísticas",
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="stats-chart-outline" size={24} color={color} />
           ),
         }}
       />

@@ -14,9 +14,10 @@ import {
   Text,
   View,
 } from "react-native";
-import { LineChart, PieChart } from "react-native-gifted-charts";
+import { BarChart, LineChart, PieChart } from "react-native-gifted-charts";
 import { db } from "../../config/firebase";
-import { Mascota, Publicacion, Usuario } from "../../models/firebaseModels";
+import { ThemeColors, useTheme } from "../../context/ThemeContext";
+import { Adopcion, Mascota, Publicacion, Usuario } from "../../models/firebaseModels";
 import { AVATARES } from "../../utils/avatars";
 
 type MascotaItem = { id: string; data: Mascota };
@@ -44,22 +45,31 @@ function resolverAvatar(fotoPerfil: string | null) {
 
 export default function PerfilScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [mascotas, setMascotas] = useState<MascotaItem[]>([]);
   const [publicaciones, setPublicaciones] = useState<PubItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [periodo, setPeriodo] = useState<"semana" | "mes" | "año">("semana");
+  const [userRole, setUserRole] = useState<string | null>(null);
+  const [adopciones, setAdopciones] = useState<{ id: string; data: Adopcion }[]>([]);
 
   const cargar = useCallback(async () => {
     setIsLoading(true);
     try {
-      const userId = await AsyncStorage.getItem("userId");
+      const [userId, role] = await Promise.all([
+        AsyncStorage.getItem("userId"),
+        AsyncStorage.getItem("userRole"),
+      ]);
       if (!userId) return;
+      setUserRole(role);
 
-      const [userSnap, mascSnap, pubSnap] = await Promise.all([
+      const [userSnap, mascSnap, pubSnap, adoptSnap] = await Promise.all([
         get(ref(db, `usuarios/${userId}`)),
         get(ref(db, "mascotas")),
         get(ref(db, "publicaciones")),
+        get(ref(db, "adopciones")),
       ]);
 
       if (userSnap.exists()) setUsuario(userSnap.val() as Usuario);
@@ -84,6 +94,15 @@ export default function PerfilScreen() {
         new Date(b.data.fechaRegistro).getTime() - new Date(a.data.fechaRegistro).getTime()
       );
       setPublicaciones(pubsArr);
+
+      const adoptArr: { id: string; data: Adopcion }[] = [];
+      if (adoptSnap.exists()) {
+        adoptSnap.forEach((child) => {
+          const a = child.val() as Adopcion;
+          if (a.idUsuario === userId) adoptArr.push({ id: child.key!, data: a });
+        });
+      }
+      setAdopciones(adoptArr);
     } catch (e) {
       console.error("Error cargando perfil:", e);
     } finally {
@@ -144,6 +163,41 @@ export default function PerfilScreen() {
     });
   }, [publicaciones, periodo]);
 
+  const barAdopcionesMes = useMemo(() => {
+    if (adopciones.length === 0) return [];
+    const ahora = new Date();
+    const data: { value: number; label: string; frontColor: string; spacing: number; barWidth: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const target = new Date(ahora.getFullYear(), ahora.getMonth() - i, 1);
+      const perros = adopciones.filter(({ data: a }) => {
+        const d = new Date(a.fechaAdopcion);
+        return d.getFullYear() === target.getFullYear() &&
+               d.getMonth() === target.getMonth() &&
+               a.tipoAnimal.toLowerCase().includes("perro");
+      }).length;
+      const gatos = adopciones.filter(({ data: a }) => {
+        const d = new Date(a.fechaAdopcion);
+        return d.getFullYear() === target.getFullYear() &&
+               d.getMonth() === target.getMonth() &&
+               a.tipoAnimal.toLowerCase().includes("gato");
+      }).length;
+      data.push(
+        { value: perros, label: MESES[target.getMonth()], frontColor: "#FF8C42", spacing: 2, barWidth: 14 },
+        { value: gatos, label: "", frontColor: "#4F6D7A", spacing: 18, barWidth: 14 },
+      );
+    }
+    return data;
+  }, [adopciones]);
+
+  const barAdopcionesVia = useMemo(() => {
+    const porApp = adopciones.filter(({ data: a }) => a.via === "app").length;
+    const externas = adopciones.filter(({ data: a }) => a.via === "externo").length;
+    return [
+      { value: porApp, label: "Por App", frontColor: "#FF8C42" },
+      { value: externas, label: "Externas", frontColor: "#4F6D7A" },
+    ];
+  }, [adopciones]);
+
   const eliminarCuenta = () => {
     Alert.alert(
       "Eliminar cuenta",
@@ -193,7 +247,7 @@ export default function PerfilScreen() {
   if (isLoading) {
     return (
       <View style={styles.centrado}>
-        <ActivityIndicator size="large" color="#FF8C42" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -223,16 +277,16 @@ export default function PerfilScreen() {
           </View>
         </View>
         <View style={styles.infoRow}>
-          <Ionicons name="mail-outline" size={16} color="#4F6D7A" />
+          <Ionicons name="mail-outline" size={16} color={colors.textSecondary} />
           <Text style={styles.infoText}>{usuario?.correo ?? "-"}</Text>
         </View>
         <View style={styles.infoRow}>
-          <Ionicons name="call-outline" size={16} color="#4F6D7A" />
+          <Ionicons name="call-outline" size={16} color={colors.textSecondary} />
           <Text style={styles.infoText}>{usuario?.celular ?? "-"}</Text>
         </View>
         {usuario?.fechaRegistro ? (
           <View style={styles.infoRow}>
-            <Ionicons name="calendar-outline" size={16} color="#4F6D7A" />
+            <Ionicons name="calendar-outline" size={16} color={colors.textSecondary} />
             <Text style={styles.infoText}>
               Miembro desde{" "}
               {new Date(usuario.fechaRegistro).toLocaleDateString("es-MX", {
@@ -253,15 +307,15 @@ export default function PerfilScreen() {
             </Pressable>
           )}
           <Pressable style={[styles.btnSmall, styles.btnSmallPrimary]} onPress={() => router.push("/mascota/nueva" as any)}>
-            <Ionicons name="add" size={14} color="#FFF" />
-            <Text style={[styles.btnSmallText, { color: "#FFF" }]}>Nueva</Text>
+            <Ionicons name="add" size={14} color={colors.textInverse} />
+            <Text style={[styles.btnSmallText, { color: colors.textInverse }]}>Nueva</Text>
           </Pressable>
         </View>
       </View>
 
       {mascotas.length === 0 ? (
         <View style={styles.emptySection}>
-          <Ionicons name="paw-outline" size={36} color="#D1D5DB" />
+          <Ionicons name="paw-outline" size={36} color={colors.textSecondary} />
           <Text style={styles.emptySectionText}>No tienes mascotas registradas.</Text>
         </View>
       ) : (
@@ -273,7 +327,7 @@ export default function PerfilScreen() {
               onPress={() => router.push(`/mascota/${item.id}` as any)}
             >
               <View style={styles.itemIconBox}>
-                <Ionicons name="paw" size={28} color="#FF8C42" />
+                <Ionicons name="paw" size={28} color={colors.accent} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemTitle}>{item.data.nombre}</Text>
@@ -282,7 +336,7 @@ export default function PerfilScreen() {
                   {item.data.edad} {item.data.edad === 1 ? "año" : "años"}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </Pressable>
           ))}
           {mascotas.length > PREVIEW && (
@@ -303,15 +357,15 @@ export default function PerfilScreen() {
             </Pressable>
           )}
           <Pressable style={[styles.btnSmall, styles.btnSmallPrimary]} onPress={() => router.push("/publicacion/nueva" as any)}>
-            <Ionicons name="add" size={14} color="#FFF" />
-            <Text style={[styles.btnSmallText, { color: "#FFF" }]}>Nueva</Text>
+            <Ionicons name="add" size={14} color={colors.textInverse} />
+            <Text style={[styles.btnSmallText, { color: colors.textInverse }]}>Nueva</Text>
           </Pressable>
         </View>
       </View>
 
       {publicaciones.length === 0 ? (
         <View style={styles.emptySection}>
-          <Ionicons name="newspaper-outline" size={36} color="#D1D5DB" />
+          <Ionicons name="newspaper-outline" size={36} color={colors.textSecondary} />
           <Text style={styles.emptySectionText}>No tienes publicaciones.</Text>
         </View>
       ) : (
@@ -328,7 +382,7 @@ export default function PerfilScreen() {
                   <Image source={{ uri: primeraFoto }} style={styles.pubFoto} />
                 ) : (
                   <View style={[styles.pubFoto, styles.pubFotoPlaceholder]}>
-                    <Ionicons name="image-outline" size={28} color="#D1D5DB" />
+                    <Ionicons name="image-outline" size={28} color={colors.textSecondary} />
                   </View>
                 )}
                 <View style={{ flex: 1, paddingHorizontal: 12 }}>
@@ -342,7 +396,7 @@ export default function PerfilScreen() {
                     {new Date(item.data.fechaRegistro).toLocaleDateString("es-MX")}
                   </Text>
                 </View>
-                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+                <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
               </Pressable>
             );
           })}
@@ -370,14 +424,15 @@ export default function PerfilScreen() {
             textColor="#FFF"
             radius={90}
             innerRadius={54}
+            innerCircleColor={colors.surface}
             textSize={12}
             focusOnPress
             centerLabelComponent={() => (
               <View style={{ alignItems: "center" }}>
-                <Text style={{ fontSize: 22, fontWeight: "bold", color: "#2B2D42" }}>
+                <Text style={{ fontSize: 22, fontWeight: "bold", color: colors.text }}>
                   {mascotas.length}
                 </Text>
-                <Text style={{ fontSize: 11, color: "#4F6D7A" }}>mascotas</Text>
+                <Text style={{ fontSize: 11, color: colors.textSecondary }}>mascotas</Text>
               </View>
             )}
           />
@@ -394,7 +449,7 @@ export default function PerfilScreen() {
         </View>
       ) : (
         <View style={styles.emptySection}>
-          <Ionicons name="pie-chart-outline" size={36} color="#D1D5DB" />
+          <Ionicons name="pie-chart-outline" size={36} color={colors.textSecondary} />
           <Text style={styles.emptySectionText}>Registra mascotas para ver estadísticas.</Text>
         </View>
       )}
@@ -409,7 +464,7 @@ export default function PerfilScreen() {
               style={[styles.periodoChip, periodo === p && styles.periodoChipActivo]}
               onPress={() => setPeriodo(p)}
             >
-              <Text style={[styles.periodoChipText, periodo === p && { color: "#FFF" }]}>
+              <Text style={[styles.periodoChipText, periodo === p && { color: colors.textInverse }]}>
                 {p === "semana" ? "Semana" : p === "mes" ? "Mes" : "Año"}
               </Text>
             </Pressable>
@@ -420,37 +475,101 @@ export default function PerfilScreen() {
             data={lineData}
             width={SCREEN_W - 96}
             height={160}
-            color="#FF8C42"
+            color={colors.accent}
             thickness={2.5}
-            dataPointsColor="#FF8C42"
-            startFillColor="#FF8C42"
-            endFillColor="#FFF9F5"
+            dataPointsColor={colors.accent}
+            startFillColor={colors.accent}
+            endFillColor={colors.surface}
             startOpacity={0.35}
             endOpacity={0.02}
             areaChart
             noOfSections={4}
-            yAxisColor="#E7E5E4"
-            xAxisColor="#E7E5E4"
-            yAxisTextStyle={{ color: "#9CA3AF", fontSize: 10 }}
-            xAxisLabelTextStyle={{ color: "#9CA3AF", fontSize: 10 }}
-            rulesColor="#F3F4F6"
+            yAxisColor={colors.border}
+            xAxisColor={colors.border}
+            yAxisTextStyle={{ color: colors.textSecondary, fontSize: 10 }}
+            xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 10 }}
+            rulesColor={colors.border}
             curved
             isAnimated
             hideDataPoints={false}
           />
         ) : (
           <View style={styles.chartEmpty}>
-            <Ionicons name="bar-chart-outline" size={36} color="#D1D5DB" />
+            <Ionicons name="bar-chart-outline" size={36} color={colors.textSecondary} />
             <Text style={styles.emptySectionText}>Sin publicaciones para mostrar.</Text>
           </View>
         )}
       </View>
 
+      {/* Panel de Adopciones — solo Refugio */}
+      {userRole === "Refugio" && (
+        <>
+          <View style={[styles.sectionHeader, { marginTop: 8 }]}>
+            <Text style={styles.sectionTitle}>Panel de Adopciones</Text>
+          </View>
+
+          {adopciones.length === 0 ? (
+            <View style={styles.emptySection}>
+              <Ionicons name="stats-chart-outline" size={36} color={colors.textSecondary} />
+              <Text style={styles.emptySectionText}>Aún no hay adopciones registradas.</Text>
+            </View>
+          ) : (
+            <>
+              <View style={styles.chartCard}>
+                <Text style={styles.chartTitle}>Perros vs. Gatos adoptados (últimos 6 meses)</Text>
+                <View style={[styles.pieLeyenda, { marginBottom: 14 }]}>
+                  <View style={styles.pieLeyendaItem}>
+                    <View style={[styles.pieLeyendaDot, { backgroundColor: "#FF8C42" }]} />
+                    <Text style={styles.pieLeyendaText}>Perros</Text>
+                  </View>
+                  <View style={styles.pieLeyendaItem}>
+                    <View style={[styles.pieLeyendaDot, { backgroundColor: "#4F6D7A" }]} />
+                    <Text style={styles.pieLeyendaText}>Gatos</Text>
+                  </View>
+                </View>
+                <BarChart
+                  data={barAdopcionesMes}
+                  width={SCREEN_W - 96}
+                  height={160}
+                  noOfSections={4}
+                  barBorderRadius={4}
+                  yAxisColor={colors.border}
+                  xAxisColor={colors.border}
+                  yAxisTextStyle={{ color: colors.textSecondary, fontSize: 10 }}
+                  xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 10 }}
+                  rulesColor={colors.border}
+                  isAnimated
+                />
+              </View>
+
+              <View style={styles.chartCard}>
+                <Text style={styles.chartTitle}>Adopciones: App vs. Externas</Text>
+                <BarChart
+                  data={barAdopcionesVia}
+                  width={SCREEN_W - 96}
+                  height={160}
+                  noOfSections={4}
+                  barBorderRadius={4}
+                  barWidth={60}
+                  spacing={40}
+                  yAxisColor={colors.border}
+                  xAxisColor={colors.border}
+                  yAxisTextStyle={{ color: colors.textSecondary, fontSize: 10 }}
+                  xAxisLabelTextStyle={{ color: colors.textSecondary, fontSize: 10 }}
+                  rulesColor={colors.border}
+                  isAnimated
+                />
+              </View>
+            </>
+          )}
+        </>
+      )}
+
       {/* Zona peligrosa */}
       <View style={styles.zonaEliminar}>
         <Text style={styles.zonaEliminarTitle}>Zona de peligro</Text>
         <Pressable style={styles.btnEliminarCuenta} onPress={eliminarCuenta}>
-          <Ionicons name="trash-outline" size={18} color="#EF4444" />
+          <Ionicons name="trash-outline" size={18} color={colors.danger} />
           <Text style={styles.btnEliminarCuentaText}>Eliminar mi cuenta</Text>
         </Pressable>
       </View>
@@ -458,169 +577,168 @@ export default function PerfilScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: "#FFF9F5" },
-  content: { paddingBottom: 30 },
-  centrado: { flex: 1, justifyContent: "center", alignItems: "center" },
-  headerCard: {
-    backgroundColor: "#FFF",
-    alignItems: "center",
-    padding: 24,
-    marginBottom: 8,
-    elevation: 2,
-  },
-  avatar: { width: 90, height: 90, borderRadius: 45, marginBottom: 12 },
-  nombre: { fontSize: 22, fontWeight: "bold", color: "#2B2D42" },
-  rolBadge: {
-    backgroundColor: "#FFE8D6",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-    marginTop: 6,
-    marginBottom: 16,
-  },
-  rolText: { color: "#FF8C42", fontWeight: "bold", fontSize: 13 },
-  statsRow: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
-  stat: { alignItems: "center", paddingHorizontal: 24 },
-  statNum: { fontSize: 24, fontWeight: "bold", color: "#FF8C42" },
-  statLabel: { fontSize: 12, color: "#4F6D7A" },
-  statDivider: { width: 1, height: 36, backgroundColor: "#E7E5E4" },
-  infoRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 },
-  infoText: { fontSize: 14, color: "#4F6D7A" },
-  sectionHeader: {
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: "#FFF9F5",
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  sectionTitle: { fontSize: 16, fontWeight: "bold", color: "#2B2D42" },
-  sectionActions: { flexDirection: "row", gap: 6 },
-  btnSmall: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#FF8C42",
-  },
-  btnSmallPrimary: { backgroundColor: "#FF8C42", borderColor: "#FF8C42" },
-  btnSmallText: { fontSize: 12, fontWeight: "bold", color: "#FF8C42" },
-  verMasBtn: { marginHorizontal: 16, marginBottom: 10, alignItems: "center", paddingVertical: 10 },
-  verMasBtnText: { color: "#FF8C42", fontWeight: "bold", fontSize: 14 },
-  emptySection: {
-    alignItems: "center",
-    paddingVertical: 24,
-    backgroundColor: "#FFF",
-    marginHorizontal: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    elevation: 1,
-  },
-  emptySectionText: { color: "#9CA3AF", marginTop: 8, fontSize: 14 },
-  itemCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFF",
-    marginHorizontal: 16,
-    marginBottom: 10,
-    borderRadius: 14,
-    padding: 14,
-    elevation: 2,
-  },
-  itemIconBox: {
-    width: 48, height: 48,
-    borderRadius: 24,
-    backgroundColor: "#FFE8D6",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  itemTitle: { fontSize: 16, fontWeight: "bold", color: "#2B2D42" },
-  itemSub: { fontSize: 13, color: "#4F6D7A", marginTop: 2 },
-  pubCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFF",
-    marginHorizontal: 16,
-    marginBottom: 10,
-    borderRadius: 14,
-    overflow: "hidden",
-    elevation: 2,
-  },
-  pubFoto: { width: 80, height: 80 },
-  pubFotoPlaceholder: { backgroundColor: "#F3F4F6", justifyContent: "center", alignItems: "center" },
-  tagSmall: {
-    borderRadius: 10,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    alignSelf: "flex-start",
-    marginBottom: 4,
-  },
-  tagSmallText: { color: "#FFF", fontSize: 11, fontWeight: "bold" },
-  // Charts
-  chartCard: {
-    backgroundColor: "#FFF",
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderRadius: 14,
-    padding: 16,
-    elevation: 2,
-    alignItems: "center",
-  },
-  chartTitle: {
-    fontSize: 15,
-    fontWeight: "bold",
-    color: "#2B2D42",
-    marginBottom: 14,
-    alignSelf: "flex-start",
-  },
-  pieLeyenda: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 14,
-    justifyContent: "center",
-  },
-  pieLeyendaItem: { flexDirection: "row", alignItems: "center", gap: 5 },
-  pieLeyendaDot: { width: 10, height: 10, borderRadius: 5 },
-  pieLeyendaText: { fontSize: 12, color: "#4F6D7A" },
-  periodoRow: { flexDirection: "row", gap: 8, marginBottom: 14, alignSelf: "flex-start" },
-  periodoChip: {
-    paddingVertical: 5,
-    paddingHorizontal: 14,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    borderColor: "#FF8C42",
-  },
-  periodoChipActivo: { backgroundColor: "#FF8C42" },
-  periodoChipText: { fontSize: 12, fontWeight: "bold", color: "#FF8C42" },
-  chartEmpty: { alignItems: "center", paddingVertical: 20 },
-  // Danger zone
-  zonaEliminar: {
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-    padding: 16,
-    backgroundColor: "#FFF",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#FECACA",
-    elevation: 1,
-  },
-  zonaEliminarTitle: { fontSize: 13, fontWeight: "bold", color: "#9CA3AF", marginBottom: 10 },
-  btnEliminarCuenta: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: "#EF4444",
-  },
-  btnEliminarCuentaText: { color: "#EF4444", fontWeight: "bold", fontSize: 15 },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    bg: { flex: 1, backgroundColor: colors.background },
+    content: { paddingBottom: 30 },
+    centrado: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background },
+    headerCard: {
+      backgroundColor: colors.surface,
+      alignItems: "center",
+      padding: 24,
+      marginBottom: 8,
+      elevation: 2,
+    },
+    avatar: { width: 90, height: 90, borderRadius: 45, marginBottom: 12 },
+    nombre: { fontSize: 22, fontWeight: "bold", color: colors.text },
+    rolBadge: {
+      backgroundColor: colors.accentSoft,
+      borderRadius: 20,
+      paddingHorizontal: 14,
+      paddingVertical: 4,
+      marginTop: 6,
+      marginBottom: 16,
+    },
+    rolText: { color: colors.accent, fontWeight: "bold", fontSize: 13 },
+    statsRow: { flexDirection: "row", alignItems: "center", marginBottom: 16 },
+    stat: { alignItems: "center", paddingHorizontal: 24 },
+    statNum: { fontSize: 24, fontWeight: "bold", color: colors.accent },
+    statLabel: { fontSize: 12, color: colors.textSecondary },
+    statDivider: { width: 1, height: 36, backgroundColor: colors.border },
+    infoRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6 },
+    infoText: { fontSize: 14, color: colors.textSecondary },
+    sectionHeader: {
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      backgroundColor: colors.background,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    sectionTitle: { fontSize: 16, fontWeight: "bold", color: colors.text },
+    sectionActions: { flexDirection: "row", gap: 6 },
+    btnSmall: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 3,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: colors.accent,
+    },
+    btnSmallPrimary: { backgroundColor: colors.accent, borderColor: colors.accent },
+    btnSmallText: { fontSize: 12, fontWeight: "bold", color: colors.accent },
+    verMasBtn: { marginHorizontal: 16, marginBottom: 10, alignItems: "center", paddingVertical: 10 },
+    verMasBtnText: { color: colors.accent, fontWeight: "bold", fontSize: 14 },
+    emptySection: {
+      alignItems: "center",
+      paddingVertical: 24,
+      backgroundColor: colors.surface,
+      marginHorizontal: 16,
+      borderRadius: 12,
+      marginBottom: 12,
+      elevation: 1,
+    },
+    emptySectionText: { color: colors.textSecondary, marginTop: 8, fontSize: 14 },
+    itemCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      marginHorizontal: 16,
+      marginBottom: 10,
+      borderRadius: 14,
+      padding: 14,
+      elevation: 2,
+    },
+    itemIconBox: {
+      width: 48, height: 48,
+      borderRadius: 24,
+      backgroundColor: colors.accentSoft,
+      justifyContent: "center",
+      alignItems: "center",
+      marginRight: 12,
+    },
+    itemTitle: { fontSize: 16, fontWeight: "bold", color: colors.text },
+    itemSub: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+    pubCard: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      marginHorizontal: 16,
+      marginBottom: 10,
+      borderRadius: 14,
+      overflow: "hidden",
+      elevation: 2,
+    },
+    pubFoto: { width: 80, height: 80 },
+    pubFotoPlaceholder: { backgroundColor: colors.surfaceAlt, justifyContent: "center", alignItems: "center" },
+    tagSmall: {
+      borderRadius: 10,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      alignSelf: "flex-start",
+      marginBottom: 4,
+    },
+    tagSmallText: { color: "#FFF", fontSize: 11, fontWeight: "bold" },
+    chartCard: {
+      backgroundColor: colors.surface,
+      marginHorizontal: 16,
+      marginBottom: 12,
+      borderRadius: 14,
+      padding: 16,
+      elevation: 2,
+      alignItems: "center",
+    },
+    chartTitle: {
+      fontSize: 15,
+      fontWeight: "bold",
+      color: colors.text,
+      marginBottom: 14,
+      alignSelf: "flex-start",
+    },
+    pieLeyenda: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginTop: 14,
+      justifyContent: "center",
+    },
+    pieLeyendaItem: { flexDirection: "row", alignItems: "center", gap: 5 },
+    pieLeyendaDot: { width: 10, height: 10, borderRadius: 5 },
+    pieLeyendaText: { fontSize: 12, color: colors.textSecondary },
+    periodoRow: { flexDirection: "row", gap: 8, marginBottom: 14, alignSelf: "flex-start" },
+    periodoChip: {
+      paddingVertical: 5,
+      paddingHorizontal: 14,
+      borderRadius: 16,
+      borderWidth: 1.5,
+      borderColor: colors.accent,
+    },
+    periodoChipActivo: { backgroundColor: colors.accent },
+    periodoChipText: { fontSize: 12, fontWeight: "bold", color: colors.accent },
+    chartEmpty: { alignItems: "center", paddingVertical: 20 },
+    zonaEliminar: {
+      marginHorizontal: 16,
+      marginTop: 16,
+      marginBottom: 8,
+      padding: 16,
+      backgroundColor: colors.surface,
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: colors.danger,
+      elevation: 1,
+    },
+    zonaEliminarTitle: { fontSize: 13, fontWeight: "bold", color: colors.textSecondary, marginBottom: 10 },
+    btnEliminarCuenta: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      paddingVertical: 12,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: colors.danger,
+    },
+    btnEliminarCuentaText: { color: colors.danger, fontWeight: "bold", fontSize: 15 },
+  });

@@ -14,10 +14,13 @@ import {
   View,
 } from "react-native";
 import { db } from "../config/firebase";
+import { ThemeColors, useTheme } from "../context/ThemeContext";
 import { useShake } from "../hooks/useShake";
 
 export default function LoginScreen() {
   const router = useRouter();
+  const { colors, isDarkMode } = useTheme();
+  const styles = makeStyles(colors, isDarkMode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isChecking, setIsChecking] = useState(true);
@@ -133,9 +136,10 @@ export default function LoginScreen() {
         <Text style={styles.title}>RedPatitas</Text>
 
         <View style={styles.inputContainer}>
-          <Ionicons name="mail-outline" size={20} color="#78716C" style={styles.icon} />
+          <Ionicons name="mail-outline" size={20} color={colors.textSecondary} style={styles.icon} />
           <TextInput
             placeholder="Correo o Nombre de Usuario"
+            placeholderTextColor={colors.textSecondary}
             style={styles.input}
             autoCapitalize="none"
             value={email}
@@ -144,9 +148,10 @@ export default function LoginScreen() {
         </View>
 
         <View style={styles.inputContainer}>
-          <Ionicons name="lock-closed-outline" size={20} color="#78716C" style={styles.icon} />
+          <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} style={styles.icon} />
           <TextInput
             placeholder="Contraseña"
+            placeholderTextColor={colors.textSecondary}
             style={styles.input}
             secureTextEntry
             value={password}
@@ -186,52 +191,53 @@ export default function LoginScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  background: { flex: 1, justifyContent: "center", padding: 20 },
-  card: {
-    backgroundColor: "rgba(255, 255, 255, 0.90)",
-    borderRadius: 20,
-    padding: 25,
-    elevation: 5,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "bold",
-    color: "#FF8C42",
-    textAlign: "center",
-    marginBottom: 20,
-  },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F6F6F6",
-    borderRadius: 10,
-    marginBottom: 15,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: "#E7E5E4",
-  },
-  icon: { marginRight: 10 },
-  input: { flex: 1, height: 50, color: "#444" },
-  btnEntrar: {
-    backgroundColor: "#FF8C42",
-    paddingVertical: 15,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 5,
-    elevation: 2,
-  },
-  btnText: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
-  opcionesExtras: { marginTop: 20 },
-  btnSecundario: { alignItems: "center", paddingVertical: 10 },
-  btnSecundarioText: { color: "#FF8C42", fontWeight: "bold", fontSize: 15 },
-  divisor: { flexDirection: "row", alignItems: "center", marginVertical: 15 },
-  linea: { flex: 1, height: 1, backgroundColor: "#D6D3D1" },
-  textoDivisor: { width: 30, textAlign: "center", color: "#A8A29E" },
-  btnInvitado: { alignItems: "center", paddingVertical: 10 },
-  btnInvitadoText: {
-    color: "#4F6D7A",
-    textDecorationLine: "underline",
-    fontSize: 15,
-  },
-});
+const makeStyles = (colors: ThemeColors, isDarkMode: boolean) =>
+  StyleSheet.create({
+    background: { flex: 1, justifyContent: "center", padding: 20 },
+    card: {
+      backgroundColor: isDarkMode ? "rgba(30, 27, 24, 0.92)" : "rgba(255, 255, 255, 0.90)",
+      borderRadius: 20,
+      padding: 25,
+      elevation: 5,
+    },
+    title: {
+      fontSize: 28,
+      fontWeight: "bold",
+      color: colors.accent,
+      textAlign: "center",
+      marginBottom: 20,
+    },
+    inputContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: isDarkMode ? colors.surface : "#F6F6F6",
+      borderRadius: 10,
+      marginBottom: 15,
+      paddingHorizontal: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    icon: { marginRight: 10 },
+    input: { flex: 1, height: 50, color: colors.text },
+    btnEntrar: {
+      backgroundColor: colors.accent,
+      paddingVertical: 15,
+      borderRadius: 10,
+      alignItems: "center",
+      marginTop: 5,
+      elevation: 2,
+    },
+    btnText: { color: colors.textInverse, fontWeight: "bold", fontSize: 16 },
+    opcionesExtras: { marginTop: 20 },
+    btnSecundario: { alignItems: "center", paddingVertical: 10 },
+    btnSecundarioText: { color: colors.accent, fontWeight: "bold", fontSize: 15 },
+    divisor: { flexDirection: "row", alignItems: "center", marginVertical: 15 },
+    linea: { flex: 1, height: 1, backgroundColor: colors.border },
+    textoDivisor: { width: 30, textAlign: "center", color: colors.textSecondary },
+    btnInvitado: { alignItems: "center", paddingVertical: 10 },
+    btnInvitadoText: {
+      color: colors.textSecondary,
+      textDecorationLine: "underline",
+      fontSize: 15,
+    },
+  });

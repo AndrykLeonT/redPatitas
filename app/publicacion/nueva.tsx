@@ -19,6 +19,7 @@ import {
 } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { db } from "../../config/firebase";
+import { ThemeColors, useTheme } from "../../context/ThemeContext";
 import { Mascota, Publicacion } from "../../models/firebaseModels";
 
 type MascotaOpt = { id: string; nombre: string };
@@ -43,6 +44,8 @@ const FALLBACK_REGION = {
 
 export default function NuevaPublicacion() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
 
   const [tipo, setTipo] = useState<"reporte" | "perdidos" | "recreacion">("reporte");
   const [descripcion, setDescripcion] = useState("");
@@ -206,9 +209,9 @@ export default function NuevaPublicacion() {
           options={{
             title: "Nueva Publicación",
             headerShown: true,
-            headerTintColor: "#FF8C42",
-            headerStyle: { backgroundColor: "#FFF" },
-            headerTitleStyle: { color: "#2B2D42", fontWeight: "bold" },
+            headerTintColor: colors.accent,
+            headerStyle: { backgroundColor: colors.surface },
+            headerTitleStyle: { color: colors.text, fontWeight: "bold" },
           }}
         />
 
@@ -222,7 +225,7 @@ export default function NuevaPublicacion() {
                 style={[styles.tipoBtn, tipo === key && { backgroundColor: color, borderColor: color }]}
                 onPress={() => setTipo(key)}
               >
-                <Text style={[styles.tipoBtnText, tipo === key && { color: "#FFF" }]}>{label}</Text>
+                <Text style={[styles.tipoBtnText, tipo === key && { color: colors.textInverse }]}>{label}</Text>
               </Pressable>
             ))}
           </View>
@@ -234,6 +237,7 @@ export default function NuevaPublicacion() {
           <TextInput
             style={styles.textArea}
             placeholder="Describe la situación: dónde fue visto, cuándo, características..."
+            placeholderTextColor={colors.textSecondary}
             value={descripcion}
             onChangeText={setDescripcion}
             multiline
@@ -250,13 +254,13 @@ export default function NuevaPublicacion() {
               <View key={index} style={styles.fotoThumb}>
                 <Image source={{ uri }} style={styles.thumbImg} />
                 <Pressable style={styles.removeBtn} onPress={() => removeImage(index)}>
-                  <Ionicons name="close-circle" size={22} color="#EF4444" />
+                  <Ionicons name="close-circle" size={22} color={colors.danger} />
                 </Pressable>
               </View>
             ))}
             {fotosLocales.length < MAX_FOTOS && (
               <Pressable style={styles.addFotoBtn} onPress={pickImages}>
-                <Ionicons name="camera-outline" size={28} color="#FF8C42" />
+                <Ionicons name="camera-outline" size={28} color={colors.accent} />
                 <Text style={styles.addFotoText}>Agregar</Text>
               </Pressable>
             )}
@@ -267,7 +271,7 @@ export default function NuevaPublicacion() {
         <View style={styles.card}>
           <Text style={styles.cardTitle}>Mascota vinculada</Text>
           {loadingMascotas ? (
-            <ActivityIndicator color="#FF8C42" />
+            <ActivityIndicator color={colors.accent} />
           ) : mascotas.length === 0 ? (
             <Text style={styles.textoVacio}>No tienes mascotas registradas.</Text>
           ) : (
@@ -276,7 +280,7 @@ export default function NuevaPublicacion() {
                 style={[styles.mascotaOpt, idMascota === null && styles.mascotaOptActivo]}
                 onPress={() => setIdMascota(null)}
               >
-                <Ionicons name="close-circle-outline" size={16} color={idMascota === null ? "#FF8C42" : "#9CA3AF"} />
+                <Ionicons name="close-circle-outline" size={16} color={idMascota === null ? colors.accent : colors.textSecondary} />
                 <Text style={[styles.mascotaOptText, idMascota === null && styles.mascotaOptTextActivo]}>Sin vincular</Text>
               </Pressable>
               {mascotas.map((m) => (
@@ -285,7 +289,7 @@ export default function NuevaPublicacion() {
                   style={[styles.mascotaOpt, idMascota === m.id && styles.mascotaOptActivo]}
                   onPress={() => setIdMascota(m.id)}
                 >
-                  <Ionicons name="paw" size={16} color={idMascota === m.id ? "#FF8C42" : "#9CA3AF"} />
+                  <Ionicons name="paw" size={16} color={idMascota === m.id ? colors.accent : colors.textSecondary} />
                   <Text style={[styles.mascotaOptText, idMascota === m.id && styles.mascotaOptTextActivo]}>{m.nombre}</Text>
                 </Pressable>
               ))}
@@ -298,11 +302,11 @@ export default function NuevaPublicacion() {
           <Text style={styles.cardTitle}>Ubicación</Text>
           <View style={styles.ubicacionBtns}>
             <Pressable style={styles.ubicacionBtn} onPress={usarUbicacionActual}>
-              <Ionicons name="locate-outline" size={18} color="#FF8C42" />
+              <Ionicons name="locate-outline" size={18} color={colors.accent} />
               <Text style={styles.ubicacionBtnText}>Ubicación actual</Text>
             </Pressable>
             <Pressable style={styles.ubicacionBtn} onPress={abrirMapaPicker}>
-              <Ionicons name="map-outline" size={18} color="#FF8C42" />
+              <Ionicons name="map-outline" size={18} color={colors.accent} />
               <Text style={styles.ubicacionBtnText}>Elegir en mapa</Text>
             </Pressable>
           </View>
@@ -313,7 +317,7 @@ export default function NuevaPublicacion() {
                 {ubicacion.latitude.toFixed(5)}, {ubicacion.longitude.toFixed(5)}
               </Text>
               <Pressable onPress={() => setUbicacion(null)}>
-                <Ionicons name="close-circle-outline" size={18} color="#9CA3AF" />
+                <Ionicons name="close-circle-outline" size={18} color={colors.textSecondary} />
               </Pressable>
             </View>
           ) : (
@@ -324,12 +328,12 @@ export default function NuevaPublicacion() {
         <Pressable style={[styles.btnPublicar, isLoading && { opacity: 0.7 }]} onPress={publicar} disabled={isLoading}>
           {isLoading ? (
             <View style={{ alignItems: "center", gap: 6 }}>
-              <ActivityIndicator color="#FFF" />
+              <ActivityIndicator color={colors.textInverse} />
               {loadingStatus ? <Text style={styles.loadingStatusText}>{loadingStatus}</Text> : null}
             </View>
           ) : (
             <>
-              <Ionicons name="megaphone-outline" size={20} color="#FFF" />
+              <Ionicons name="megaphone-outline" size={20} color={colors.textInverse} />
               <Text style={styles.btnPublicarText}>Publicar</Text>
             </>
           )}
@@ -350,7 +354,7 @@ export default function NuevaPublicacion() {
                 coordinate={tempMarker}
                 draggable
                 onDragEnd={(e) => setTempMarker(e.nativeEvent.coordinate)}
-                pinColor="#FF8C42"
+                pinColor={colors.accent}
               />
             )}
           </MapView>
@@ -379,131 +383,132 @@ export default function NuevaPublicacion() {
   );
 }
 
-const styles = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: "#FFF9F5" },
-  content: { paddingBottom: 40 },
-  card: {
-    backgroundColor: "#FFF",
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 16,
-    padding: 16,
-    elevation: 2,
-  },
-  cardTitle: { fontSize: 15, fontWeight: "bold", color: "#FF8C42", marginBottom: 12 },
-  tipoRow: { flexDirection: "row", gap: 8 },
-  tipoBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: "#E5E7EB",
-    alignItems: "center",
-    backgroundColor: "#FFF9F5",
-  },
-  tipoBtnText: { fontSize: 13, fontWeight: "600", color: "#4F6D7A" },
-  textArea: {
-    backgroundColor: "#FFF9F5",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    padding: 12,
-    fontSize: 14,
-    color: "#2B2D42",
-    minHeight: 100,
-  },
-  fotosGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  fotoThumb: { position: "relative" },
-  thumbImg: { width: 80, height: 80, borderRadius: 10 },
-  removeBtn: { position: "absolute", top: -8, right: -8 },
-  addFotoBtn: {
-    width: 80,
-    height: 80,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: "#FF8C42",
-    borderStyle: "dashed",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#FFF9F5",
-  },
-  addFotoText: { fontSize: 11, color: "#FF8C42", marginTop: 2 },
-  mascotaOpt: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    marginBottom: 8,
-    backgroundColor: "#FFF9F5",
-  },
-  mascotaOptActivo: { borderColor: "#FF8C42", backgroundColor: "#FFE8D6" },
-  mascotaOptText: { fontSize: 14, color: "#4F6D7A" },
-  mascotaOptTextActivo: { color: "#FF8C42", fontWeight: "bold" },
-  textoVacio: { fontSize: 13, color: "#9CA3AF", fontStyle: "italic" },
-  ubicacionBtns: { flexDirection: "row", gap: 10, marginBottom: 12 },
-  ubicacionBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: "#FF8C42",
-    backgroundColor: "#FFF9F5",
-  },
-  ubicacionBtnText: { fontSize: 13, fontWeight: "600", color: "#FF8C42" },
-  ubicacionInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "#F0FDF4",
-    padding: 10,
-    borderRadius: 10,
-  },
-  ubicacionText: { flex: 1, fontSize: 13, color: "#4F6D7A" },
-  btnPublicar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#FF8C42",
-    marginHorizontal: 16,
-    marginTop: 20,
-    paddingVertical: 14,
-    borderRadius: 14,
-    elevation: 3,
-  },
-  btnPublicarText: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
-  loadingStatusText: { color: "#FFF", fontSize: 12, marginTop: 4 },
-  mapControls: {
-    backgroundColor: "#FFF",
-    padding: 16,
-    paddingBottom: 28,
-    elevation: 8,
-  },
-  mapHint: { fontSize: 14, color: "#4F6D7A", textAlign: "center", marginBottom: 14 },
-  mapBtns: { flexDirection: "row", gap: 12 },
-  mapBtnCancelar: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: "#E5E7EB",
-    alignItems: "center",
-  },
-  mapBtnCancelarText: { color: "#4F6D7A", fontWeight: "bold" },
-  mapBtnConfirmar: {
-    flex: 2,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: "#FF8C42",
-    alignItems: "center",
-  },
-  mapBtnConfirmarText: { color: "#FFF", fontWeight: "bold" },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    bg: { flex: 1, backgroundColor: colors.background },
+    content: { paddingBottom: 40 },
+    card: {
+      backgroundColor: colors.surface,
+      marginHorizontal: 16,
+      marginTop: 16,
+      borderRadius: 16,
+      padding: 16,
+      elevation: 2,
+    },
+    cardTitle: { fontSize: 15, fontWeight: "bold", color: colors.accent, marginBottom: 12 },
+    tipoRow: { flexDirection: "row", gap: 8 },
+    tipoBtn: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      alignItems: "center",
+      backgroundColor: colors.background,
+    },
+    tipoBtnText: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
+    textArea: {
+      backgroundColor: colors.background,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 12,
+      fontSize: 14,
+      color: colors.text,
+      minHeight: 100,
+    },
+    fotosGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+    fotoThumb: { position: "relative" },
+    thumbImg: { width: 80, height: 80, borderRadius: 10 },
+    removeBtn: { position: "absolute", top: -8, right: -8 },
+    addFotoBtn: {
+      width: 80,
+      height: 80,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: colors.accent,
+      borderStyle: "dashed",
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: colors.background,
+    },
+    addFotoText: { fontSize: 11, color: colors.accent, marginTop: 2 },
+    mascotaOpt: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingVertical: 10,
+      paddingHorizontal: 12,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 8,
+      backgroundColor: colors.background,
+    },
+    mascotaOptActivo: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
+    mascotaOptText: { fontSize: 14, color: colors.textSecondary },
+    mascotaOptTextActivo: { color: colors.accent, fontWeight: "bold" },
+    textoVacio: { fontSize: 13, color: colors.textSecondary, fontStyle: "italic" },
+    ubicacionBtns: { flexDirection: "row", gap: 10, marginBottom: 12 },
+    ubicacionBtn: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      paddingVertical: 10,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: colors.accent,
+      backgroundColor: colors.background,
+    },
+    ubicacionBtnText: { fontSize: 13, fontWeight: "600", color: colors.accent },
+    ubicacionInfo: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      backgroundColor: colors.accentSoft,
+      padding: 10,
+      borderRadius: 10,
+    },
+    ubicacionText: { flex: 1, fontSize: 13, color: colors.textSecondary },
+    btnPublicar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      backgroundColor: colors.accent,
+      marginHorizontal: 16,
+      marginTop: 20,
+      paddingVertical: 14,
+      borderRadius: 14,
+      elevation: 3,
+    },
+    btnPublicarText: { color: colors.textInverse, fontWeight: "bold", fontSize: 16 },
+    loadingStatusText: { color: colors.textInverse, fontSize: 12, marginTop: 4 },
+    mapControls: {
+      backgroundColor: colors.surface,
+      padding: 16,
+      paddingBottom: 28,
+      elevation: 8,
+    },
+    mapHint: { fontSize: 14, color: colors.textSecondary, textAlign: "center", marginBottom: 14 },
+    mapBtns: { flexDirection: "row", gap: 12 },
+    mapBtnCancelar: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 12,
+      borderWidth: 1.5,
+      borderColor: colors.border,
+      alignItems: "center",
+    },
+    mapBtnCancelarText: { color: colors.textSecondary, fontWeight: "bold" },
+    mapBtnConfirmar: {
+      flex: 2,
+      paddingVertical: 12,
+      borderRadius: 12,
+      backgroundColor: colors.accent,
+      alignItems: "center",
+    },
+    mapBtnConfirmarText: { color: colors.textInverse, fontWeight: "bold" },
+  });

@@ -17,6 +17,7 @@ import {
   View,
 } from "react-native";
 import { db } from "../../config/firebase";
+import { ThemeColors, useTheme } from "../../context/ThemeContext";
 import { Mascota } from "../../models/firebaseModels";
 
 const CLOUD_NAME = "dwlbornu8";
@@ -26,6 +27,8 @@ const MAX_FOTOS = 5;
 
 export default function NuevaMascota() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
 
   const [nombre, setNombre] = useState("");
   const [tipoAnimal, setTipoAnimal] = useState("");
@@ -140,9 +143,9 @@ export default function NuevaMascota() {
         options={{
           title: "Nueva Mascota",
           headerShown: true,
-          headerTintColor: "#FF8C42",
-          headerStyle: { backgroundColor: "#FFF" },
-          headerTitleStyle: { color: "#2B2D42", fontWeight: "bold" },
+          headerTintColor: colors.accent,
+          headerStyle: { backgroundColor: colors.surface },
+          headerTitleStyle: { color: colors.text, fontWeight: "bold" },
         }}
       />
 
@@ -152,20 +155,20 @@ export default function NuevaMascota() {
 
         <Text style={styles.label}>Nombre *</Text>
         <View style={styles.inputRow}>
-          <Ionicons name="paw-outline" size={18} color="#4F6D7A" style={styles.inputIcon} />
-          <TextInput style={styles.input} placeholder="Ej. Firulais" value={nombre} onChangeText={setNombre} />
+          <Ionicons name="paw-outline" size={18} color={colors.textSecondary} style={styles.inputIcon} />
+          <TextInput style={styles.input} placeholder="Ej. Firulais" placeholderTextColor={colors.textSecondary} value={nombre} onChangeText={setNombre} />
         </View>
 
         <Text style={styles.label}>Tipo de animal *</Text>
         <View style={styles.inputRow}>
-          <Ionicons name="help-circle-outline" size={18} color="#4F6D7A" style={styles.inputIcon} />
-          <TextInput style={styles.input} placeholder="Perro, Gato, Conejo..." value={tipoAnimal} onChangeText={setTipoAnimal} />
+          <Ionicons name="help-circle-outline" size={18} color={colors.textSecondary} style={styles.inputIcon} />
+          <TextInput style={styles.input} placeholder="Perro, Gato, Conejo..." placeholderTextColor={colors.textSecondary} value={tipoAnimal} onChangeText={setTipoAnimal} />
         </View>
 
         <Text style={styles.label}>Raza *</Text>
         <View style={styles.inputRow}>
-          <Ionicons name="bookmark-outline" size={18} color="#4F6D7A" style={styles.inputIcon} />
-          <TextInput style={styles.input} placeholder="Ej. Labrador, Mestizo..." value={raza} onChangeText={setRaza} />
+          <Ionicons name="bookmark-outline" size={18} color={colors.textSecondary} style={styles.inputIcon} />
+          <TextInput style={styles.input} placeholder="Ej. Labrador, Mestizo..." placeholderTextColor={colors.textSecondary} value={raza} onChangeText={setRaza} />
         </View>
 
         <Text style={styles.label}>Sexo</Text>
@@ -185,22 +188,23 @@ export default function NuevaMascota() {
 
         <Text style={styles.label}>Edad (años) *</Text>
         <View style={styles.inputRow}>
-          <Ionicons name="time-outline" size={18} color="#4F6D7A" style={styles.inputIcon} />
-          <TextInput style={styles.input} placeholder="Ej. 3" value={edad} onChangeText={setEdad} keyboardType="numeric" />
+          <Ionicons name="time-outline" size={18} color={colors.textSecondary} style={styles.inputIcon} />
+          <TextInput style={styles.input} placeholder="Ej. 3" placeholderTextColor={colors.textSecondary} value={edad} onChangeText={setEdad} keyboardType="numeric" />
         </View>
 
         <Text style={styles.label}>Peso (kg) *</Text>
         <View style={styles.inputRow}>
-          <Ionicons name="barbell-outline" size={18} color="#4F6D7A" style={styles.inputIcon} />
-          <TextInput style={styles.input} placeholder="Ej. 12.5" value={peso} onChangeText={setPeso} keyboardType="decimal-pad" />
+          <Ionicons name="barbell-outline" size={18} color={colors.textSecondary} style={styles.inputIcon} />
+          <TextInput style={styles.input} placeholder="Ej. 12.5" placeholderTextColor={colors.textSecondary} value={peso} onChangeText={setPeso} keyboardType="decimal-pad" />
         </View>
 
         <Text style={styles.label}>Fecha de nacimiento (AAAA-MM-DD)</Text>
         <View style={styles.inputRow}>
-          <Ionicons name="calendar-outline" size={18} color="#4F6D7A" style={styles.inputIcon} />
+          <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} style={styles.inputIcon} />
           <TextInput
             style={styles.input}
             placeholder="Ej. 2020-05-15"
+            placeholderTextColor={colors.textSecondary}
             value={fechaNacimiento}
             onChangeText={setFechaNacimiento}
             keyboardType="numeric"
@@ -213,7 +217,7 @@ export default function NuevaMascota() {
           <Switch
             value={esterilizado}
             onValueChange={setEsterilizado}
-            trackColor={{ false: "#D1D5DB", true: "#FF8C42" }}
+            trackColor={{ false: colors.border, true: colors.accent }}
             thumbColor="#FFF"
           />
         </View>
@@ -227,6 +231,7 @@ export default function NuevaMascota() {
         <TextInput
           style={styles.textArea}
           placeholder="Describe el comportamiento de tu mascota..."
+          placeholderTextColor={colors.textSecondary}
           value={comportamiento}
           onChangeText={setComportamiento}
           multiline
@@ -238,6 +243,7 @@ export default function NuevaMascota() {
         <TextInput
           style={styles.textArea}
           placeholder="Manchas, cicatrices, collar, microchip..."
+          placeholderTextColor={colors.textSecondary}
           value={rasgosParticulares}
           onChangeText={setRasgosParticulares}
           multiline
@@ -254,13 +260,13 @@ export default function NuevaMascota() {
             <View key={index} style={styles.fotoThumb}>
               <Image source={{ uri }} style={styles.thumbImg} />
               <Pressable style={styles.removeBtn} onPress={() => removeImage(index)}>
-                <Ionicons name="close-circle" size={22} color="#EF4444" />
+                <Ionicons name="close-circle" size={22} color={colors.danger} />
               </Pressable>
             </View>
           ))}
           {fotosLocales.length < MAX_FOTOS && (
             <Pressable style={styles.addFotoBtn} onPress={pickImages}>
-              <Ionicons name="camera-outline" size={28} color="#FF8C42" />
+              <Ionicons name="camera-outline" size={28} color={colors.accent} />
               <Text style={styles.addFotoText}>Agregar</Text>
             </Pressable>
           )}
@@ -270,12 +276,12 @@ export default function NuevaMascota() {
       <Pressable style={[styles.btnGuardar, isLoading && { opacity: 0.7 }]} onPress={guardar} disabled={isLoading}>
         {isLoading ? (
           <View style={{ alignItems: "center", gap: 6 }}>
-            <ActivityIndicator color="#FFF" />
+            <ActivityIndicator color={colors.textInverse} />
             {loadingStatus ? <Text style={styles.loadingStatusText}>{loadingStatus}</Text> : null}
           </View>
         ) : (
           <>
-            <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" />
+            <Ionicons name="checkmark-circle-outline" size={20} color={colors.textInverse} />
             <Text style={styles.btnGuardarText}>Registrar Mascota</Text>
           </>
         )}
@@ -284,82 +290,83 @@ export default function NuevaMascota() {
   );
 }
 
-const styles = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: "#FFF9F5" },
-  content: { paddingBottom: 40 },
-  card: {
-    backgroundColor: "#FFF",
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 16,
-    padding: 16,
-    elevation: 2,
-  },
-  cardTitle: { fontSize: 15, fontWeight: "bold", color: "#FF8C42", marginBottom: 8 },
-  label: { fontSize: 13, fontWeight: "600", color: "#4F6D7A", marginBottom: 6, marginTop: 10 },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFF9F5",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    paddingHorizontal: 10,
-  },
-  inputIcon: { marginRight: 8 },
-  input: { flex: 1, height: 44, color: "#2B2D42", fontSize: 14 },
-  selectorRow: { flexDirection: "row", gap: 10 },
-  selectorBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    alignItems: "center",
-    backgroundColor: "#FFF9F5",
-  },
-  selectorBtnActivo: { borderColor: "#FF8C42", backgroundColor: "#FFE8D6" },
-  selectorText: { color: "#4F6D7A", fontSize: 14, fontWeight: "500" },
-  selectorTextActivo: { color: "#FF8C42", fontWeight: "bold" },
-  switchRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10 },
-  textArea: {
-    backgroundColor: "#FFF9F5",
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#E5E7EB",
-    padding: 10,
-    fontSize: 14,
-    color: "#2B2D42",
-    minHeight: 80,
-  },
-  fotosGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
-  fotoThumb: { position: "relative" },
-  thumbImg: { width: 80, height: 80, borderRadius: 10 },
-  removeBtn: { position: "absolute", top: -8, right: -8 },
-  addFotoBtn: {
-    width: 80,
-    height: 80,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: "#FF8C42",
-    borderStyle: "dashed",
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#FFF9F5",
-  },
-  addFotoText: { fontSize: 11, color: "#FF8C42", marginTop: 2 },
-  btnGuardar: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#FF8C42",
-    marginHorizontal: 16,
-    marginTop: 20,
-    paddingVertical: 14,
-    borderRadius: 14,
-    elevation: 3,
-  },
-  btnGuardarText: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
-  loadingStatusText: { color: "#FFF", fontSize: 12 },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    bg: { flex: 1, backgroundColor: colors.background },
+    content: { paddingBottom: 40 },
+    card: {
+      backgroundColor: colors.surface,
+      marginHorizontal: 16,
+      marginTop: 16,
+      borderRadius: 16,
+      padding: 16,
+      elevation: 2,
+    },
+    cardTitle: { fontSize: 15, fontWeight: "bold", color: colors.accent, marginBottom: 8 },
+    label: { fontSize: 13, fontWeight: "600", color: colors.textSecondary, marginBottom: 6, marginTop: 10 },
+    inputRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.background,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      paddingHorizontal: 10,
+    },
+    inputIcon: { marginRight: 8 },
+    input: { flex: 1, height: 44, color: colors.text, fontSize: 14 },
+    selectorRow: { flexDirection: "row", gap: 10 },
+    selectorBtn: {
+      flex: 1,
+      paddingVertical: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      alignItems: "center",
+      backgroundColor: colors.background,
+    },
+    selectorBtnActivo: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
+    selectorText: { color: colors.textSecondary, fontSize: 14, fontWeight: "500" },
+    selectorTextActivo: { color: colors.accent, fontWeight: "bold" },
+    switchRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 10 },
+    textArea: {
+      backgroundColor: colors.background,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 10,
+      fontSize: 14,
+      color: colors.text,
+      minHeight: 80,
+    },
+    fotosGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+    fotoThumb: { position: "relative" },
+    thumbImg: { width: 80, height: 80, borderRadius: 10 },
+    removeBtn: { position: "absolute", top: -8, right: -8 },
+    addFotoBtn: {
+      width: 80,
+      height: 80,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: colors.accent,
+      borderStyle: "dashed",
+      justifyContent: "center",
+      alignItems: "center",
+      backgroundColor: colors.background,
+    },
+    addFotoText: { fontSize: 11, color: colors.accent, marginTop: 2 },
+    btnGuardar: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      backgroundColor: colors.accent,
+      marginHorizontal: 16,
+      marginTop: 20,
+      paddingVertical: 14,
+      borderRadius: 14,
+      elevation: 3,
+    },
+    btnGuardarText: { color: colors.textInverse, fontWeight: "bold", fontSize: 16 },
+    loadingStatusText: { color: colors.textInverse, fontSize: 12 },
+  });

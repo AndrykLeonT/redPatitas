@@ -16,12 +16,15 @@ import {
   View,
 } from "react-native";
 import { db } from "../config/firebase";
+import { ThemeColors, useTheme } from "../context/ThemeContext";
 import { useShake } from "../hooks/useShake";
 import { Usuario } from "../models/firebaseModels";
 import { AVATARES } from "../utils/avatars";
 
 export default function RegistroScreen() {
   const router = useRouter();
+  const { colors, isDarkMode } = useTheme();
+  const styles = makeStyles(colors, isDarkMode);
   const [nombre, setNombre] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
@@ -135,7 +138,7 @@ export default function RegistroScreen() {
       >
         <View style={styles.card}>
           <Pressable onPress={() => router.back()} style={styles.btnAtras}>
-            <Ionicons name="arrow-back" size={24} color="#FF8C42" />
+            <Ionicons name="arrow-back" size={24} color={colors.accent} />
           </Pressable>
 
           <Text style={styles.title}>Únete a la Manada</Text>
@@ -167,9 +170,10 @@ export default function RegistroScreen() {
           </ScrollView>
 
           <View style={styles.inputContainer}>
-            <Ionicons name="person-outline" size={20} color="#78716C" style={styles.icon} />
+            <Ionicons name="person-outline" size={20} color={colors.textSecondary} style={styles.icon} />
             <TextInput
               placeholder="Nombre completo"
+              placeholderTextColor={colors.textSecondary}
               style={styles.input}
               value={nombre}
               onChangeText={setNombre}
@@ -177,9 +181,10 @@ export default function RegistroScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Ionicons name="at-outline" size={20} color="#78716C" style={styles.icon} />
+            <Ionicons name="at-outline" size={20} color={colors.textSecondary} style={styles.icon} />
             <TextInput
               placeholder="Nombre de usuario"
+              placeholderTextColor={colors.textSecondary}
               style={styles.input}
               value={username}
               onChangeText={setUsername}
@@ -188,9 +193,10 @@ export default function RegistroScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Ionicons name="mail-outline" size={20} color="#78716C" style={styles.icon} />
+            <Ionicons name="mail-outline" size={20} color={colors.textSecondary} style={styles.icon} />
             <TextInput
               placeholder="Correo electrónico"
+              placeholderTextColor={colors.textSecondary}
               style={styles.input}
               keyboardType="email-address"
               value={email}
@@ -200,9 +206,10 @@ export default function RegistroScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Ionicons name="call-outline" size={20} color="#78716C" style={styles.icon} />
+            <Ionicons name="call-outline" size={20} color={colors.textSecondary} style={styles.icon} />
             <TextInput
               placeholder="Número de celular"
+              placeholderTextColor={colors.textSecondary}
               style={styles.input}
               keyboardType="phone-pad"
               value={telefono}
@@ -211,9 +218,10 @@ export default function RegistroScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Ionicons name="calendar-outline" size={20} color="#78716C" style={styles.icon} />
+            <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} style={styles.icon} />
             <TextInput
               placeholder="Fecha de nacimiento (AAAA-MM-DD)"
+              placeholderTextColor={colors.textSecondary}
               style={styles.input}
               value={fechaNacimiento}
               onChangeText={setFechaNacimiento}
@@ -243,9 +251,10 @@ export default function RegistroScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Ionicons name="lock-closed-outline" size={20} color="#78716C" style={styles.icon} />
+            <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} style={styles.icon} />
             <TextInput
               placeholder="Contraseña (mínimo 6 caracteres)"
+              placeholderTextColor={colors.textSecondary}
               style={styles.input}
               secureTextEntry
               value={password}
@@ -254,9 +263,10 @@ export default function RegistroScreen() {
           </View>
 
           <View style={styles.inputContainer}>
-            <Ionicons name="shield-checkmark-outline" size={20} color="#78716C" style={styles.icon} />
+            <Ionicons name="shield-checkmark-outline" size={20} color={colors.textSecondary} style={styles.icon} />
             <TextInput
               placeholder="Confirmar Contraseña"
+              placeholderTextColor={colors.textSecondary}
               style={styles.input}
               secureTextEntry
               value={confirmPassword}
@@ -281,72 +291,73 @@ export default function RegistroScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  background: { flex: 1 },
-  scrollContainer: { flexGrow: 1, justifyContent: "center", padding: 20 },
-  card: {
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    borderRadius: 20,
-    padding: 25,
-    elevation: 5,
-  },
-  btnAtras: { marginBottom: 10, alignSelf: "flex-start" },
-  title: { fontSize: 26, fontWeight: "bold", color: "#FF8C42", marginBottom: 5 },
-  subtitle: { fontSize: 14, color: "#4F6D7A", marginBottom: 10 },
-  avatarScroll: { flexDirection: "row", marginBottom: 20 },
-  avatarContainer: {
-    marginRight: 10,
-    borderWidth: 3,
-    borderColor: "transparent",
-    borderRadius: 35,
-    overflow: "hidden",
-  },
-  avatarSelected: { borderColor: "#FF8C42" },
-  avatarImg: { width: 60, height: 60, borderRadius: 30 },
-  inputContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F6F6F6",
-    borderRadius: 10,
-    marginBottom: 15,
-    paddingHorizontal: 10,
-    borderWidth: 1,
-    borderColor: "#E7E5E4",
-  },
-  icon: { marginRight: 10 },
-  input: { flex: 1, height: 50, color: "#444" },
-  labelRol: {
-    fontSize: 14,
-    fontWeight: "bold",
-    color: "#4F6D7A",
-    marginBottom: 10,
-    marginTop: 5,
-  },
-  rolContainer: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-  btnRol: {
-    flex: 1,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: "#E7E5E4",
-    borderRadius: 10,
-    alignItems: "center",
-    marginHorizontal: 3,
-    backgroundColor: "#F6F6F6",
-  },
-  btnRolActivo: { borderColor: "#FF8C42", backgroundColor: "#FFE8D6" },
-  textoRol: { color: "#4F6D7A", fontSize: 13, fontWeight: "500" },
-  textoRolActivo: { color: "#FF8C42", fontWeight: "bold" },
-  btnRegistrar: {
-    backgroundColor: "#FF8C42",
-    paddingVertical: 15,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 10,
-    elevation: 2,
-  },
-  btnText: { color: "#FFF", fontWeight: "bold", fontSize: 16 },
-});
+const makeStyles = (colors: ThemeColors, isDarkMode: boolean) =>
+  StyleSheet.create({
+    background: { flex: 1 },
+    scrollContainer: { flexGrow: 1, justifyContent: "center", padding: 20 },
+    card: {
+      backgroundColor: isDarkMode ? "rgba(30, 27, 24, 0.95)" : "rgba(255, 255, 255, 0.95)",
+      borderRadius: 20,
+      padding: 25,
+      elevation: 5,
+    },
+    btnAtras: { marginBottom: 10, alignSelf: "flex-start" },
+    title: { fontSize: 26, fontWeight: "bold", color: colors.accent, marginBottom: 5 },
+    subtitle: { fontSize: 14, color: colors.textSecondary, marginBottom: 10 },
+    avatarScroll: { flexDirection: "row", marginBottom: 20 },
+    avatarContainer: {
+      marginRight: 10,
+      borderWidth: 3,
+      borderColor: "transparent",
+      borderRadius: 35,
+      overflow: "hidden",
+    },
+    avatarSelected: { borderColor: colors.accent },
+    avatarImg: { width: 60, height: 60, borderRadius: 30 },
+    inputContainer: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: isDarkMode ? colors.surface : "#F6F6F6",
+      borderRadius: 10,
+      marginBottom: 15,
+      paddingHorizontal: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    icon: { marginRight: 10 },
+    input: { flex: 1, height: 50, color: colors.text },
+    labelRol: {
+      fontSize: 14,
+      fontWeight: "bold",
+      color: colors.textSecondary,
+      marginBottom: 10,
+      marginTop: 5,
+    },
+    rolContainer: {
+      flexDirection: "row",
+      justifyContent: "space-between",
+      marginBottom: 20,
+    },
+    btnRol: {
+      flex: 1,
+      paddingVertical: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 10,
+      alignItems: "center",
+      marginHorizontal: 3,
+      backgroundColor: isDarkMode ? colors.surface : "#F6F6F6",
+    },
+    btnRolActivo: { borderColor: colors.accent, backgroundColor: colors.accentSoft },
+    textoRol: { color: colors.textSecondary, fontSize: 13, fontWeight: "500" },
+    textoRolActivo: { color: colors.accent, fontWeight: "bold" },
+    btnRegistrar: {
+      backgroundColor: colors.accent,
+      paddingVertical: 15,
+      borderRadius: 10,
+      alignItems: "center",
+      marginTop: 10,
+      elevation: 2,
+    },
+    btnText: { color: colors.textInverse, fontWeight: "bold", fontSize: 16 },
+  });

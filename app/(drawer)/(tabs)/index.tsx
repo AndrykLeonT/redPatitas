@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { db } from "../../../config/firebase";
+import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 import { Mascota, Publicacion } from "../../../models/firebaseModels";
 
 export const calcularDistancia = (
@@ -58,8 +59,10 @@ const FALLBACK_LOCATION = {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [feed, setFeed] = useState<FeedItem[]>([]);
-  const [las isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
 
   useEffect(() => {
@@ -130,7 +133,7 @@ export default function HomeScreen() {
           <Image source={{ uri: primeraFoto }} style={styles.imagen} />
         ) : (
           <View style={[styles.imagen, styles.imagenPlaceholder]}>
-            <Ionicons name="paw-outline" size={48} color="#D1D5DB" />
+            <Ionicons name="paw-outline" size={48} color={colors.textSecondary} />
           </View>
         )}
 
@@ -157,7 +160,7 @@ export default function HomeScreen() {
   if (isLoading) {
     return (
       <View style={styles.centrado}>
-        <ActivityIndicator size="large" color="#FF8C42" />
+        <ActivityIndicator size="large" color={colors.accent} />
         <Text style={styles.loaderText}>Cargando publicaciones...</Text>
       </View>
     );
@@ -172,7 +175,7 @@ export default function HomeScreen() {
         contentContainerStyle={feed.length === 0 ? styles.centradoFlex : styles.container}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="paw-outline" size={56} color="#D1D5DB" />
+            <Ionicons name="paw-outline" size={56} color={colors.textSecondary} />
             <Text style={styles.emptyTitle}>No hay publicaciones</Text>
             <Text style={styles.emptySubtitle}>Aún no hay reportes ni mascotas en adopción.</Text>
           </View>
@@ -182,52 +185,53 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: "#FFF9F5" },
-  centrado: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FFF9F5" },
-  centradoFlex: { flex: 1, justifyContent: "center", alignItems: "center" },
-  loaderText: { marginTop: 10, color: "#4F6D7A" },
-  container: { padding: 15 },
-  emptyContainer: { alignItems: "center", paddingTop: 40 },
-  emptyTitle: { fontSize: 18, fontWeight: "bold", color: "#4F6D7A", marginTop: 16 },
-  emptySubtitle: { fontSize: 14, color: "#9CA3AF", marginTop: 8, textAlign: "center" },
-  card: {
-    backgroundColor: "#FFF",
-    borderRadius: 20,
-    marginBottom: 20,
-    elevation: 4,
-    overflow: "hidden",
-  },
-  imagen: { width: "100%", height: 200 },
-  imagenPlaceholder: {
-    backgroundColor: "#F3F4F6",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  tag: {
-    position: "absolute",
-    top: 15,
-    left: 15,
-    paddingVertical: 5,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-    zIndex: 1,
-  },
-  tagText: { color: "#FFF", fontWeight: "bold", fontSize: 12 },
-  cardBody: {
-    padding: 15,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  nombre: { fontSize: 20, fontWeight: "bold", color: "#2B2D42" },
-  detalles: { fontSize: 13, color: "#4F6D7A", marginTop: 2 },
-  btnVerMas: {
-    backgroundColor: "#FF8C42",
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 10,
-    marginLeft: 10,
-  },
-  btnVerMasText: { color: "#FFF", fontWeight: "bold" },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    bg: { flex: 1, backgroundColor: colors.background },
+    centrado: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background },
+    centradoFlex: { flex: 1, justifyContent: "center", alignItems: "center" },
+    loaderText: { marginTop: 10, color: colors.textSecondary },
+    container: { padding: 15 },
+    emptyContainer: { alignItems: "center", paddingTop: 40 },
+    emptyTitle: { fontSize: 18, fontWeight: "bold", color: colors.textSecondary, marginTop: 16 },
+    emptySubtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 8, textAlign: "center" },
+    card: {
+      backgroundColor: colors.surface,
+      borderRadius: 20,
+      marginBottom: 20,
+      elevation: 4,
+      overflow: "hidden",
+    },
+    imagen: { width: "100%", height: 200 },
+    imagenPlaceholder: {
+      backgroundColor: colors.surfaceAlt,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    tag: {
+      position: "absolute",
+      top: 15,
+      left: 15,
+      paddingVertical: 5,
+      paddingHorizontal: 15,
+      borderRadius: 20,
+      zIndex: 1,
+    },
+    tagText: { color: "#FFF", fontWeight: "bold", fontSize: 12 },
+    cardBody: {
+      padding: 15,
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "center",
+    },
+    nombre: { fontSize: 20, fontWeight: "bold", color: colors.text },
+    detalles: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
+    btnVerMas: {
+      backgroundColor: colors.accent,
+      paddingVertical: 8,
+      paddingHorizontal: 15,
+      borderRadius: 10,
+      marginLeft: 10,
+    },
+    btnVerMasText: { color: colors.textInverse, fontWeight: "bold" },
+  });

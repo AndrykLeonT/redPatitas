@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker } from "react-native-maps";
 import { db } from "../../../config/firebase";
+import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 import { Mascota, Publicacion } from "../../../models/firebaseModels";
 import { calcularDistancia } from "./index";
 
@@ -29,6 +30,8 @@ const FALLBACK = {
 };
 
 export default function Mapa() {
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
   const [puntos, setPuntos] = useState<PuntoMapa[]>([]);
 
@@ -72,7 +75,7 @@ export default function Mapa() {
   if (!location) {
     return (
       <View style={styles.loader}>
-        <ActivityIndicator size="large" color="#BF7C48" />
+        <ActivityIndicator size="large" color={colors.accent} />
         <Text style={styles.loaderText}>Obteniendo tu ubicación en el mapa...</Text>
       </View>
     );
@@ -104,9 +107,10 @@ export default function Mapa() {
   );
 }
 
-const styles = StyleSheet.create({
-  loader: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#F5F5F4" },
-  loaderText: { marginTop: 10, color: "#6D5540" },
-  container: { flex: 1 },
-  map: { flex: 1 },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    loader: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background },
+    loaderText: { marginTop: 10, color: colors.textSecondary },
+    container: { flex: 1 },
+    map: { flex: 1 },
+  });

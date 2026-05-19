@@ -22,7 +22,7 @@ function resolverAvatar(fotoPerfil: string | null) {
 
 // ─── Drawer content ────────────────────────────────────────────────────────────
 function CustomDrawerContent(props: any) {
-  const { role, userAvatar, userName, isDarkMode, toggleTheme, onSessionChange, navigation } = props;
+  const { role, userAvatar, userName, isDarkMode, toggleTheme, colors, onSessionChange, navigation } = props;
 
   const isGuest = role === "guest" || !role;
 
@@ -52,14 +52,14 @@ function CustomDrawerContent(props: any) {
     goToLogin();
   };
 
-  const bgColor = isDarkMode ? "#2D2D2E" : "#E7E5E4";
-  const textColor = isDarkMode ? "#EDF2F4" : "#2B2D42";
+  const bgColor = colors.surfaceAlt;
+  const textColor = colors.text;
   const avatarSource = resolverAvatar(userAvatar);
 
   return (
     <DrawerContentScrollView
       {...props}
-      style={{ backgroundColor: isDarkMode ? "#1A1A1B" : "#FFFFFF" }}
+      style={{ backgroundColor: colors.background }}
     >
       <View style={[styles.header, { backgroundColor: bgColor }]}>
         {role !== "guest" && role != null ? (
@@ -76,13 +76,13 @@ function CustomDrawerContent(props: any) {
               style={[
                 styles.profilePic,
                 styles.guestPic,
-                isDarkMode && { backgroundColor: "#2D2D2E" },
+                isDarkMode && { backgroundColor: colors.surface },
               ]}
             >
               <Ionicons
                 name="person"
                 size={50}
-                color={isDarkMode ? "#D1D5DB" : "#9CA3AF"}
+                color={colors.textSecondary}
               />
             </View>
             <Text style={[styles.userName, { color: textColor }]}>
@@ -96,12 +96,12 @@ function CustomDrawerContent(props: any) {
 
       <DrawerItem
         label={isDarkMode ? "Modo Claro" : "Modo Oscuro"}
-        labelStyle={{ color: isDarkMode ? "#F9FAFB" : "#1C1917" }}
+        labelStyle={{ color: colors.text }}
         icon={({ color }) => (
           <Ionicons
             name={isDarkMode ? "sunny-outline" : "moon-outline"}
             size={24}
-            color={isDarkMode ? "#F9FAFB" : color}
+            color={isDarkMode ? colors.text : color}
           />
         )}
         onPress={toggleTheme}
@@ -109,12 +109,12 @@ function CustomDrawerContent(props: any) {
 
       <DrawerItem
         label={isGuest ? "Iniciar sesión" : "Cerrar sesión"}
-        labelStyle={{ color: isDarkMode ? "#F9FAFB" : "#1C1917" }}
+        labelStyle={{ color: colors.text }}
         icon={({ color }) => (
           <Ionicons
             name={isGuest ? "log-in-outline" : "log-out-outline"}
             size={24}
-            color={isDarkMode ? "#F9FAFB" : color}
+            color={isDarkMode ? colors.text : color}
           />
         )}
         onPress={isGuest ? handleLoginRedirect : handleLogout}
@@ -128,7 +128,7 @@ export default function DrawerLayout() {
   const [role, setRole] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
-  const { isDarkMode, toggleTheme } = useTheme();
+  const { isDarkMode, toggleTheme, colors } = useTheme();
   const appState = useRef(AppState.currentState);
 
   const fetchSession = useCallback(async () => {
@@ -192,16 +192,17 @@ export default function DrawerLayout() {
           userAvatar={userAvatar}
           isDarkMode={isDarkMode}
           toggleTheme={toggleTheme}
+          colors={colors}
           onSessionChange={handleSessionChange}
         />
       )}
       screenOptions={{
-        headerStyle: { backgroundColor: isDarkMode ? "#1A1A1B" : "#FF8C42" },
+        headerStyle: { backgroundColor: isDarkMode ? colors.background : colors.accent },
         headerTintColor: "#fff",
-        drawerActiveTintColor: isDarkMode ? "#FFA56D" : "#FF8C42",
-        drawerInactiveTintColor: isDarkMode ? "#95AFBA" : "#4F6D7A",
+        drawerActiveTintColor: colors.accent,
+        drawerInactiveTintColor: colors.textSecondary,
         drawerStyle: {
-          backgroundColor: isDarkMode ? "#1A1A1B" : "#FFF9F5",
+          backgroundColor: colors.background,
         },
       }}
     >

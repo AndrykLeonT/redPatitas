@@ -12,5 +12,3 @@ Genera el scaffold completo para un nuevo tipo de publicación en RedPatitas.
 6. Las fotos deben almacenarse como `Record<string, string>` usando `push()` de Firebase.
 
 ## Tipo de publicación a crear
-
-$ARGUMENTS

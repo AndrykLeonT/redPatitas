@@ -13,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { db } from "../../config/firebase";
+import { ThemeColors, useTheme } from "../../context/ThemeContext";
 import { Publicacion } from "../../models/firebaseModels";
 
 type PubItem = { id: string; data: Publicacion };
@@ -26,6 +27,8 @@ const TIPO_COLOR: Record<string, string> = {
 
 export default function MisPublicaciones() {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = makeStyles(colors);
   const [publicaciones, setPublicaciones] = useState<PubItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -58,7 +61,7 @@ export default function MisPublicaciones() {
   if (isLoading) {
     return (
       <View style={styles.centrado}>
-        <ActivityIndicator size="large" color="#FF8C42" />
+        <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
   }
@@ -66,7 +69,7 @@ export default function MisPublicaciones() {
   return (
     <View style={styles.bg}>
       <Pressable style={styles.btnNueva} onPress={() => router.push("/publicacion/nueva" as any)}>
-        <Ionicons name="add-circle-outline" size={20} color="#FFF" />
+        <Ionicons name="add-circle-outline" size={20} color={colors.textInverse} />
         <Text style={styles.btnNuevaText}>Nueva Publicación</Text>
       </Pressable>
 
@@ -76,7 +79,7 @@ export default function MisPublicaciones() {
         contentContainerStyle={publicaciones.length === 0 ? styles.centradoFlex : styles.listContent}
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <Ionicons name="newspaper-outline" size={56} color="#D1D5DB" />
+            <Ionicons name="newspaper-outline" size={56} color={colors.textSecondary} />
             <Text style={styles.emptyTitle}>Sin publicaciones</Text>
             <Text style={styles.emptySubtitle}>Aún no tienes publicaciones.</Text>
           </View>
@@ -92,7 +95,7 @@ export default function MisPublicaciones() {
                 <Image source={{ uri: primeraFoto }} style={styles.foto} />
               ) : (
                 <View style={[styles.foto, styles.fotoPlaceholder]}>
-                  <Ionicons name="image-outline" size={24} color="#D1D5DB" />
+                  <Ionicons name="image-outline" size={24} color={colors.textSecondary} />
                 </View>
               )}
               <View style={{ flex: 1, paddingHorizontal: 12 }}>
@@ -106,7 +109,7 @@ export default function MisPublicaciones() {
                   {new Date(item.data.fechaRegistro).toLocaleDateString("es-MX")}
                 </Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
             </Pressable>
           );
         }}
@@ -115,45 +118,46 @@ export default function MisPublicaciones() {
   );
 }
 
-const styles = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: "#FFF9F5" },
-  centrado: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "#FFF9F5" },
-  centradoFlex: { flex: 1, justifyContent: "center", alignItems: "center" },
-  btnNueva: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#FF8C42",
-    margin: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    elevation: 2,
-  },
-  btnNuevaText: { color: "#FFF", fontWeight: "bold", fontSize: 15 },
-  listContent: { paddingHorizontal: 16, paddingBottom: 20 },
-  emptyContainer: { alignItems: "center", paddingTop: 20 },
-  emptyTitle: { fontSize: 18, fontWeight: "bold", color: "#4F6D7A", marginTop: 16 },
-  emptySubtitle: { fontSize: 14, color: "#9CA3AF", marginTop: 8, textAlign: "center" },
-  card: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFF",
-    borderRadius: 14,
-    overflow: "hidden",
-    marginBottom: 10,
-    elevation: 2,
-  },
-  foto: { width: 80, height: 80 },
-  fotoPlaceholder: { backgroundColor: "#F3F4F6", justifyContent: "center", alignItems: "center" },
-  tag: {
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    alignSelf: "flex-start",
-    marginBottom: 4,
-  },
-  tagText: { color: "#FFF", fontSize: 11, fontWeight: "bold" },
-  descripcion: { fontSize: 14, color: "#2B2D42", fontWeight: "500" },
-  fecha: { fontSize: 12, color: "#4F6D7A", marginTop: 2 },
-});
+const makeStyles = (colors: ThemeColors) =>
+  StyleSheet.create({
+    bg: { flex: 1, backgroundColor: colors.background },
+    centrado: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: colors.background },
+    centradoFlex: { flex: 1, justifyContent: "center", alignItems: "center" },
+    btnNueva: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      backgroundColor: colors.accent,
+      margin: 16,
+      paddingVertical: 12,
+      borderRadius: 12,
+      elevation: 2,
+    },
+    btnNuevaText: { color: colors.textInverse, fontWeight: "bold", fontSize: 15 },
+    listContent: { paddingHorizontal: 16, paddingBottom: 20 },
+    emptyContainer: { alignItems: "center", paddingTop: 20 },
+    emptyTitle: { fontSize: 18, fontWeight: "bold", color: colors.textSecondary, marginTop: 16 },
+    emptySubtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 8, textAlign: "center" },
+    card: {
+      flexDirection: "row",
+      alignItems: "center",
+      backgroundColor: colors.surface,
+      borderRadius: 14,
+      overflow: "hidden",
+      marginBottom: 10,
+      elevation: 2,
+    },
+    foto: { width: 80, height: 80 },
+    fotoPlaceholder: { backgroundColor: colors.surfaceAlt, justifyContent: "center", alignItems: "center" },
+    tag: {
+      borderRadius: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+      alignSelf: "flex-start",
+      marginBottom: 4,
+    },
+    tagText: { color: "#FFF", fontSize: 11, fontWeight: "bold" },
+    descripcion: { fontSize: 14, color: colors.text, fontWeight: "500" },
+    fecha: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+  });
