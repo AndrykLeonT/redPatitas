@@ -30,6 +30,7 @@ const FALLBACK = {
   timestamp: Date.now(),
 };
 
+// Mapa global: muestra publicaciones con ubicacion; sin conexion evita consultar Firebase.
 export default function Mapa() {
   const { colors } = useTheme();
   const styles = makeStyles(colors);

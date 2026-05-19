@@ -21,6 +21,7 @@ function usuarioRelacionado(usuario?: Usuario | null) {
     : "No disponible";
 }
 
+// Convierte una mascota en texto plano listo para guardar como reporte local.
 export function generarReporteMascota(params: {
   id: string;
   mascota: Mascota;
@@ -71,6 +72,7 @@ ${new Date().toLocaleString("es-MX")}
 `;
 }
 
+// Convierte una publicacion y su contexto opcional en texto plano exportable.
 export function generarReportePublicacion(params: {
   id: string;
   publicacion: Publicacion;

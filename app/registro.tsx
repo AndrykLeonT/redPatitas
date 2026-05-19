@@ -22,6 +22,7 @@ import { Usuario } from "../models/firebaseModels";
 import { prepararDatosOffline } from "../services/syncService";
 import { AVATARES } from "../utils/avatars";
 
+// Pantalla de registro: crea el usuario remoto y deja una copia local inicial.
 export default function RegistroScreen() {
   const router = useRouter();
   const { colors, isDarkMode } = useTheme();
@@ -50,6 +51,7 @@ export default function RegistroScreen() {
   });
 
   const registrarUsuario = async () => {
+    // Valida el formulario antes de escribir en Firebase y SQLite.
     if (!nombre || !username || !email || !password || !telefono || !fechaNacimiento) {
       Alert.alert("Error", "Por favor completa todos los campos requeridos.");
       return;

@@ -19,6 +19,7 @@ export type EstadisticasPersonales = {
   adopcionesPorMes: Array<{ mes: string; perros: number; gatos: number }>;
 };
 
+// Calcula metricas personales usando exclusivamente datos SQLite del usuario.
 export function calcularEstadisticasPersonales(idUsuario: string): EstadisticasPersonales {
   const mascotas = listarMascotasPorUsuario(idUsuario);
   const publicaciones = listarPublicacionesPorUsuario(idUsuario);
@@ -108,6 +109,7 @@ export function guardarEstadisticasLocal(idUsuario: string, stats: EstadisticasP
 }
 
 export function recalcularYGuardarEstadisticas(idUsuario: string) {
+  // Atajo usado despues de crear, editar, eliminar o refrescar datos personales.
   const stats = calcularEstadisticasPersonales(idUsuario);
   guardarEstadisticasLocal(idUsuario, stats);
   return stats;

@@ -1,3 +1,4 @@
+// Modelos compartidos entre Firebase, SQLite y las pantallas de RedPatitas.
 export interface Usuario {
   idAuth: string;
   nombreCompleto: string;

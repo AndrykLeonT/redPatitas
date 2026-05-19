@@ -28,6 +28,7 @@ type PublicacionRow = {
   actualizadoEn: string | null;
 };
 
+// Convierte el JSON local de fotos al Record esperado por el modelo Firebase.
 function parseFotos(value: string | null): Record<string, string> {
   if (!value) return {};
   try {
@@ -38,10 +39,17 @@ function parseFotos(value: string | null): Record<string, string> {
   }
 }
 
+// Trata strings vacios como NULL para no romper foreign keys opcionales.
+function normalizeOptionalId(value: string | null | undefined): string | null {
+  return value && value.trim() ? value : null;
+}
+
+// Reconstruye Publicacion y adjunta banderas locales de sincronizacion.
 function rowToPublicacionConMeta(row: PublicacionRow): PublicacionConMeta {
+  const idMascota = normalizeOptionalId(row.idMascota);
   const pub: Publicacion = {
     idUsuario: row.idUsuario,
-    idMascota: row.idMascota ?? "",
+    ...(idMascota ? { idMascota } : {}),
     tipo: (row.tipo as Publicacion["tipo"]) ?? "reporte",
     descripcion: row.descripcion,
     fechaRegistro: row.fechaRegistro,
@@ -67,6 +75,7 @@ export function guardarPublicacionLocal(
   publicacion: Publicacion,
   opts: { pendienteSync?: boolean; creadoLocal?: boolean } = {},
 ) {
+  // Guarda publicaciones online u offline normalizando la mascota opcional.
   const ahora = new Date().toISOString();
   localDb.runSync(
     `INSERT OR REPLACE INTO publicaciones_local (
@@ -77,7 +86,7 @@ export function guardarPublicacionLocal(
     [
       id,
       publicacion.idUsuario,
-      publicacion.idMascota ?? null,
+      normalizeOptionalId(publicacion.idMascota),
       publicacion.tipo,
       publicacion.descripcion,
       publicacion.fechaRegistro,

@@ -19,6 +19,7 @@ type UsuarioRow = {
   actualizadoEn: string | null;
 };
 
+// Reconstruye el modelo Firebase desde la fila SQLite del usuario.
 function rowToUsuario(row: UsuarioRow): Usuario {
   return {
     idAuth: row.idAuth ?? "",
@@ -42,6 +43,7 @@ export function guardarUsuarioLocal(
   usuario: Usuario,
   opts: { pendienteSync?: boolean } = {},
 ) {
+  // Guarda el perfil completo como columnas consultables y como JSON de respaldo.
   const pendienteSync = opts.pendienteSync ? 1 : 0;
   const ahora = new Date().toISOString();
   localDb.runSync(

@@ -32,6 +32,7 @@ type MascotaRow = {
   actualizadoEn: string | null;
 };
 
+// Convierte campos Record de Firebase guardados como JSON en SQLite.
 function parseJsonRecord(value: string | null): Record<string, string> {
   if (!value) return {};
   try {
@@ -42,6 +43,7 @@ function parseJsonRecord(value: string | null): Record<string, string> {
   }
 }
 
+// Reconstruye Mascota y agrega metadatos locales de sincronizacion.
 function rowToMascotaConMeta(row: MascotaRow): MascotaConMeta {
   const mascota: Mascota = {
     idUsuario: row.idUsuario,
@@ -74,6 +76,7 @@ export function guardarMascotaLocal(
   mascota: Mascota,
   opts: { pendienteSync?: boolean; creadoLocal?: boolean } = {},
 ) {
+  // Persiste la mascota y conserva su payload original para sincronizacion o fallback.
   const ahora = new Date().toISOString();
   localDb.runSync(
     `INSERT OR REPLACE INTO mascotas_local (
@@ -139,6 +142,7 @@ export function eliminarMascotaLocalFisico(id: string) {
 }
 
 export function reemplazarIdMascotaLocal(idAntiguo: string, idNuevo: string) {
+  // Al recibir ID real de Firebase, actualiza tambien publicaciones vinculadas al ID local.
   const ahora = new Date().toISOString();
   localDb.runSync(
     `UPDATE mascotas_local SET id = ?, pendienteSync = 0, creadoLocal = 0, actualizadoEn = ?

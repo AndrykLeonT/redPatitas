@@ -18,6 +18,7 @@ import { ThemeColors, useTheme } from "../context/ThemeContext";
 import { useShake } from "../hooks/useShake";
 import { prepararDatosOffline } from "../services/syncService";
 
+// Pantalla de login: autentica manualmente y prepara la cache SQLite personal.
 export default function LoginScreen() {
   const router = useRouter();
   const { colors, isDarkMode } = useTheme();
@@ -56,6 +57,7 @@ export default function LoginScreen() {
 
   // ── Login Manual (Sin Firebase Auth) ──────────────────────────────────────
   const iniciarSesion = async () => {
+    // Busca por correo o nombreUsuario y compara la contrasena guardada en Firebase.
     if (!email || !password) {
       Alert.alert("Error", "Ingresa tu usuario/correo y contraseña.");
       return;

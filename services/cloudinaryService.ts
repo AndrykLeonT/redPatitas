@@ -20,6 +20,7 @@ export async function subirImagen(uri: string): Promise<string> {
   return data.secure_url;
 }
 
+// Identifica archivos del dispositivo que aun no se han subido a Cloudinary.
 export function esUriLocal(uri: string): boolean {
   return /^(file|content|ph|asset):/i.test(uri);
 }

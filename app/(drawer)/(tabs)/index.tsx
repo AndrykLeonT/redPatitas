@@ -18,6 +18,7 @@ import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 import { useNetworkStatus } from "../../../hooks/useNetworkStatus";
 import { Mascota, Publicacion } from "../../../models/firebaseModels";
 
+// Calcula distancia Haversine entre dos coordenadas para ordenar publicaciones cercanas.
 export const calcularDistancia = (
   lat1: number, lon1: number,
   lat2: number, lon2: number
@@ -59,6 +60,7 @@ const FALLBACK_LOCATION = {
   timestamp: Date.now(),
 };
 
+// Feed global: lee publicaciones desde Firebase y muestra una vista limitada sin internet.
 export default function HomeScreen() {
   const router = useRouter();
   const { colors } = useTheme();

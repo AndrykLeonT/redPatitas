@@ -6,6 +6,7 @@ type Props = {
   texto?: string;
 };
 
+// Etiqueta visual para entidades locales que aun no han llegado a Firebase.
 export default function PendingSyncBadge({ texto = "Pendiente de sincronizar" }: Props) {
   const { colors } = useTheme();
   return (

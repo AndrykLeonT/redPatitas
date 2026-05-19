@@ -5,6 +5,7 @@ export const localDb = SQLite.openDatabaseSync("redpatitas.db");
 
 let initialized = false;
 
+// Abre la base local y crea tablas una sola vez durante el ciclo de vida de la app.
 export function initLocalDb() {
   if (initialized) return;
   localDb.execSync("PRAGMA foreign_keys = ON;");
@@ -12,6 +13,7 @@ export function initLocalDb() {
   initialized = true;
 }
 
+// Borra la cache personal local; se usa al preparar datos para una nueva sesion.
 export function limpiarBaseLocal() {
   localDb.execSync(`
     DELETE FROM cambios_pendientes;
@@ -24,6 +26,7 @@ export function limpiarBaseLocal() {
   `);
 }
 
+// Genera IDs temporales para entidades creadas sin conexion.
 export function nuevoIdLocal(): string {
   return `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
 }

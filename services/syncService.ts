@@ -101,6 +101,7 @@ export async function refrescarDatosPersonales(userId: string) {
 // ─── Sincronización de cambios pendientes ─────────────────────────────────────
 
 async function sincronizarCambioMascota(cambio: CambioPendiente) {
+  // Aplica una operacion local de mascota en Firebase y reconcilia IDs temporales.
   const { entidadId, accion, payload } = cambio;
 
   if (accion === "crear") {
@@ -134,6 +135,7 @@ async function sincronizarCambioMascota(cambio: CambioPendiente) {
 }
 
 async function sincronizarCambioPublicacion(cambio: CambioPendiente) {
+  // Aplica una operacion local de publicacion, subiendo fotos locales cuando hace falta.
   const { entidadId, accion, payload } = cambio;
 
   if (accion === "crear") {
@@ -174,6 +176,7 @@ async function sincronizarCambioUsuario(cambio: CambioPendiente) {
 }
 
 async function sincronizarCambioAdopcion(cambio: CambioPendiente) {
+  // Sincroniza bajas/adopciones registradas localmente por el refugio o usuario.
   const { entidadId, accion, payload } = cambio;
 
   if (accion === "crear") {

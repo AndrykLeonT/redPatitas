@@ -16,6 +16,7 @@ import { usePendingSync } from "../../hooks/usePendingSync";
 import { AVATARES } from "../../utils/avatars";
 
 // ─── Helper: resuelve el source de imagen de forma segura ─────────────────────
+// Resuelve el avatar guardado en AsyncStorage y usa "default" si la clave no existe.
 function resolverAvatar(fotoPerfil: string | null) {
   if (!fotoPerfil) return (AVATARES as any)["default"];
   const source = (AVATARES as any)[fotoPerfil];
@@ -23,6 +24,7 @@ function resolverAvatar(fotoPerfil: string | null) {
 }
 
 // ─── Drawer content ────────────────────────────────────────────────────────────
+// Contenido personalizado del Drawer: encabezado de usuario, tema y cierre de sesion.
 function CustomDrawerContent(props: any) {
   const { role, userAvatar, userName, isDarkMode, toggleTheme, colors, onSessionChange, navigation } = props;
 
@@ -126,6 +128,7 @@ function CustomDrawerContent(props: any) {
 }
 
 // ─── Layout principal ──────────────────────────────────────────────────────────
+// Layout principal del Drawer: registra rutas y monta el modal de sincronizacion offline.
 export default function DrawerLayout() {
   const [role, setRole] = useState<string | null>(null);
   const [userName, setUserName] = useState<string | null>(null);

@@ -31,6 +31,7 @@ type CambioRow = {
   error: string | null;
 };
 
+// Deserializa el payload de la cola offline antes de sincronizarlo.
 function rowToCambio(row: CambioRow): CambioPendiente {
   let payload: any = null;
   try { payload = JSON.parse(row.payloadJson); } catch { payload = null; }
@@ -56,6 +57,7 @@ export function registrarCambioPendiente(
   accion: AccionCambio,
   payload: any,
 ) {
+  // Encola una operacion offline manteniendo el payload completo de la entidad.
   const fechaLocal = new Date().toISOString();
   localDb.runSync(
     `INSERT INTO cambios_pendientes (
@@ -66,6 +68,7 @@ export function registrarCambioPendiente(
 }
 
 export function listarCambiosPendientes(userId: string): CambioPendiente[] {
+  // Se procesan en orden cronologico para respetar dependencias entre cambios.
   const rows = localDb.getAllSync<CambioRow>(
     `SELECT * FROM cambios_pendientes
      WHERE userId = ? AND sincronizado = 0

@@ -49,6 +49,7 @@ const FALLBACK_REGION = {
   longitudeDelta: 0.05,
 };
 
+// Formulario de publicacion con fotos, ubicacion opcional y soporte offline.
 export default function NuevaPublicacion() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -169,6 +170,7 @@ export default function NuevaPublicacion() {
   };
 
   const publicar = async () => {
+    // Offline conserva fotos como URI local; la sincronizacion las sube luego a Cloudinary.
     if (!descripcion.trim()) {
       Alert.alert("Error", "La descripción es obligatoria.");
       return;
@@ -186,7 +188,7 @@ export default function NuevaPublicacion() {
 
         const nueva: Publicacion = {
           idUsuario: userId,
-          idMascota: idMascota ?? "",
+          ...(idMascota ? { idMascota } : {}),
           tipo,
           descripcion: descripcion.trim(),
           fechaRegistro: new Date().toISOString(),
@@ -217,7 +219,7 @@ export default function NuevaPublicacion() {
       setLoadingStatus("Guardando publicación...");
       const nueva: Publicacion = {
         idUsuario: userId,
-        idMascota: idMascota ?? "",
+        ...(idMascota ? { idMascota } : {}),
         tipo,
         descripcion: descripcion.trim(),
         fechaRegistro: new Date().toISOString(),

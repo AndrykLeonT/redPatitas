@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { estaConectado, suscribirseACambiosDeConexion } from "../services/networkService";
 
+// Hook de conectividad compartido por pantallas offline-first.
 export function useNetworkStatus() {
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
 

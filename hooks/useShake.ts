@@ -2,6 +2,7 @@ import { Accelerometer } from 'expo-sensors';
 import { useEffect } from 'react';
 import { Vibration } from 'react-native';
 
+// Detecta una sacudida fisica del dispositivo y ejecuta un callback con vibracion.
 export const useShake = (onShake: () => void) => {
   useEffect(() => {
     let lastShakeTime = 0;

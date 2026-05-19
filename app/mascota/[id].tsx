@@ -62,6 +62,7 @@ function Fila({
   );
 }
 
+// Detalle de mascota: carga hibrida Firebase/SQLite, baja/adopcion y exportacion TXT.
 export default function MascotaDetalle() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -85,6 +86,7 @@ export default function MascotaDetalle() {
     if (!id) return;
 
     const cargarDesdeLocal = (): boolean => {
+      // Los IDs locales y el modo sin internet se resuelven directamente desde SQLite.
       const local = obtenerMascotaLocal(id);
       if (local) {
         const { id: _, pendienteSync: ps, creadoLocal, eliminadoLocal, ...data } = local;
@@ -132,6 +134,7 @@ export default function MascotaDetalle() {
   const eliminar = () => setShowBajaModal(true);
 
   const exportarReporte = async () => {
+    // Genera un TXT independiente; el archivo no participa en la sincronizacion offline.
     if (!mascota) return;
     try {
       const usuario = userId === mascota.idUsuario && userId
@@ -170,6 +173,7 @@ export default function MascotaDetalle() {
   };
 
   const handleBaja = async (tipo: "adoptado_app" | "adoptado_externo" | "eliminar") => {
+    // Una baja por adopcion registra historial antes de ocultar o eliminar la mascota.
     setShowBajaModal(false);
     const offline = isConnected === false;
 

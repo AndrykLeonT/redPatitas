@@ -38,6 +38,7 @@ type ReporteRow = {
   descripcion: string | null;
 };
 
+// Convierte el indice SQLite en el tipo usado por la pantalla de reportes.
 function rowToReporte(row: ReporteRow): ReporteGenerado {
   return {
     id: row.id,
@@ -55,6 +56,7 @@ function rowToReporte(row: ReporteRow): ReporteGenerado {
 }
 
 export function insertarReporteGenerado(reporte: Omit<ReporteGenerado, "id">): number {
+  // Solo registra metadata; el contenido vive como archivo TXT en FileSystem.
   const result = localDb.runSync(
     `INSERT INTO reportes_generados (
       userId, titulo, tipo, entidadOrigen, entidadId, fileName, fileUri,
@@ -77,6 +79,7 @@ export function insertarReporteGenerado(reporte: Omit<ReporteGenerado, "id">): n
 }
 
 export function obtenerReportesGenerados(userId?: string | null): ReporteGenerado[] {
+  // Incluye reportes globales sin userId y reportes del usuario activo.
   const rows = userId
     ? localDb.getAllSync<ReporteRow>(
         `SELECT * FROM reportes_generados

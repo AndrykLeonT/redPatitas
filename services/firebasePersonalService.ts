@@ -9,6 +9,7 @@ export type DatosPersonales = {
   adopciones: Array<{ id: string; data: Adopcion }>;
 };
 
+// Descarga solo datos del usuario activo para poblar la cache local sin datos globales.
 export async function descargarDatosPersonales(userId: string): Promise<DatosPersonales> {
   const [userSnap, mascSnap, pubSnap, adoptSnap] = await Promise.all([
     get(ref(db, `usuarios/${userId}`)),

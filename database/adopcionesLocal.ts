@@ -23,6 +23,7 @@ type AdopcionRow = {
   actualizadoEn: string | null;
 };
 
+// Reconstruye adopciones locales con metadatos de sincronizacion.
 function rowToAdopcionConMeta(row: AdopcionRow): AdopcionConMeta {
   const adopcion: Adopcion = {
     idMascota: row.idMascota,
@@ -46,6 +47,7 @@ export function guardarAdopcionLocal(
   adopcion: Adopcion,
   opts: { pendienteSync?: boolean; creadoLocal?: boolean } = {},
 ) {
+  // Registra una adopcion/baja local para estadisticas y sincronizacion posterior.
   const ahora = new Date().toISOString();
   localDb.runSync(
     `INSERT OR REPLACE INTO adopciones_local (

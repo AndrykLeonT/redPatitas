@@ -35,6 +35,7 @@ const TIPO_COLOR: Record<string, string> = {
   reporte: "#EF4444", perdidos: "#F59E0B", recreacion: "#10B981",
 };
 
+// Lista personal de publicaciones; respeta pendientes locales y fallback offline.
 export default function MisPublicaciones() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -53,6 +54,7 @@ export default function MisPublicaciones() {
       }
 
       const cargarDesdeLocal = () => {
+        // Fallback offline: mantiene visibles las publicaciones propias no eliminadas.
         // listarPublicacionesPorUsuario ya filtra eliminadoLocal=0 y ordena por fechaRegistro DESC
         const locales = listarPublicacionesPorUsuario(userId).map((p) => {
           const { id, pendienteSync, creadoLocal, eliminadoLocal, ...data } = p;

@@ -28,6 +28,7 @@ type MascotaItem = {
   creadoLocal?: boolean;
 };
 
+// Lista personal de mascotas con lectura Firebase/SQLite segun conectividad.
 export default function MisMascotas() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -46,6 +47,7 @@ export default function MisMascotas() {
       }
 
       const cargarDesdeLocal = () => {
+        // Fallback offline: solo muestra datos propios guardados en SQLite.
         const locales = listarMascotasPorUsuario(userId).map((m) => {
           const { id, pendienteSync, creadoLocal, eliminadoLocal, ...data } = m;
           return { id, data: data as Mascota, pendienteSync, creadoLocal };

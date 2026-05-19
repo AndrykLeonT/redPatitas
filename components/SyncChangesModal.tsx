@@ -10,6 +10,7 @@ type Props = {
   onConfirm: () => void;
 };
 
+// Modal que pregunta si se deben subir a Firebase los cambios hechos offline.
 export default function SyncChangesModal({
   visible,
   pendingCount,

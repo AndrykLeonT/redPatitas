@@ -17,6 +17,7 @@ import { initLocalDb } from "../database/localDb";
 // Inicializa SQLite una sola vez al cargar el módulo (antes del primer render).
 initLocalDb();
 
+// Stack raiz: aplica tema global, registra rutas principales y muestra el splash.
 function RootNavigation() {
   const { isDarkMode } = useTheme();
 

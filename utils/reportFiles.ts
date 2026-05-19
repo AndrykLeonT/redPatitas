@@ -3,6 +3,7 @@ import * as Sharing from "expo-sharing";
 
 const REPORTES_DIR = `${FileSystem.documentDirectory}reportes/`;
 
+// Garantiza que exista la carpeta local donde se guardan los reportes TXT.
 export async function asegurarCarpetaReportes() {
   const info = await FileSystem.getInfoAsync(REPORTES_DIR);
   if (!info.exists) {
@@ -10,6 +11,7 @@ export async function asegurarCarpetaReportes() {
   }
 }
 
+// Construye nombres de archivo estables y seguros para el filesystem del dispositivo.
 export function crearNombreArchivo(prefix: string, titulo: string) {
   const limpio = titulo
     .toLowerCase()
@@ -23,6 +25,7 @@ export function crearNombreArchivo(prefix: string, titulo: string) {
   return `${prefix}_${limpio || "reporte"}_${fecha}_${hora}.txt`;
 }
 
+// Persiste el contenido del reporte dentro del almacenamiento privado de la app.
 export async function guardarReporteTxt(fileName: string, contenido: string) {
   await asegurarCarpetaReportes();
   const fileUri = `${REPORTES_DIR}${fileName}`;

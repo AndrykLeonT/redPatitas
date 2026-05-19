@@ -1,3 +1,4 @@
+// Mapa estatico de avatares locales; las claves coinciden con fotoPerfil en Firebase.
 export const AVATARES = {
   'burro_perfil.jpg': require('../assets/images/burro_perfil.jpg'),
   'gato_perfil.jpg': require('../assets/images/gato_perfil.jpg'),

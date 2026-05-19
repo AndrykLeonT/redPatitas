@@ -16,6 +16,7 @@ type SyncEstadoRow = {
   ultimaConexionDetectada: string | null;
 };
 
+// Traduce el estado de sincronizacion persistido en SQLite a flags booleanas.
 function rowToEstado(row: SyncEstadoRow): SyncEstado {
   return {
     idUsuario: row.idUsuario,
@@ -38,6 +39,7 @@ export function actualizarSyncEstado(
   idUsuario: string,
   cambios: Partial<Omit<SyncEstado, "idUsuario">>,
 ) {
+  // Mantiene un registro compacto de carga, sincronizacion y pendientes por usuario.
   const actual = obtenerSyncEstado(idUsuario) ?? {
     idUsuario,
     ultimaCargaFirebase: null,

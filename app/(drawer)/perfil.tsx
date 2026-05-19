@@ -62,6 +62,7 @@ function publicacionConMetaToItem(p: PublicacionConMeta): PubItem {
   return { id, data: data as Publicacion };
 }
 
+// Perfil del usuario: combina datos personales, graficas y resumen offline/online.
 export default function PerfilScreen() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -89,6 +90,7 @@ export default function PerfilScreen() {
       setUserRole(role);
 
       const cargarDesdeLocal = () => {
+        // En modo offline, el perfil se arma solo con tablas locales del usuario activo.
         const userLocal = obtenerUsuarioLocal(userId);
         if (userLocal) setUsuario(userLocal);
 

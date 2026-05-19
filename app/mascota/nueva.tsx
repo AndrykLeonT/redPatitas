@@ -28,6 +28,7 @@ import { crearMascotaEnFirebase } from "../../services/firebasePersonalService";
 
 const MAX_FOTOS = 5;
 
+// Formulario para crear mascota; en offline guarda SQLite y encola sincronizacion.
 export default function NuevaMascota() {
   const router = useRouter();
   const { colors } = useTheme();
@@ -75,6 +76,7 @@ export default function NuevaMascota() {
   };
 
   const guardar = async () => {
+    // Bifurca el guardado segun conectividad: Firebase+SQLite u operacion local pendiente.
     if (!nombre.trim() || !tipoAnimal.trim() || !raza.trim() || !edad || !peso) {
       Alert.alert("Error", "Nombre, tipo, raza, edad y peso son obligatorios.");
       return;

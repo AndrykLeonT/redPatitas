@@ -11,6 +11,7 @@ type Props = {
   onEliminar: () => void;
 };
 
+// Formatea fechas del indice local para mostrarlas en la tarjeta.
 function formatearFecha(value: string) {
   const fecha = new Date(value);
   if (Number.isNaN(fecha.getTime())) return value;
@@ -21,6 +22,7 @@ function formatearFecha(value: string) {
   });
 }
 
+// Tarjeta reutilizable para listar reportes TXT y exponer sus acciones principales.
 export default function ReporteCard({
   reporte,
   onVer,

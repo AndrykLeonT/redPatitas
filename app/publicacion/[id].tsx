@@ -51,6 +51,7 @@ const TIPO_COLOR: Record<string, string> = {
   reporte: "#EF4444", perdidos: "#F59E0B", recreacion: "#10B981",
 };
 
+// Detalle de publicacion: lectura hibrida, resolucion, eliminacion y exportacion TXT.
 export default function PublicacionDetalle() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -101,6 +102,7 @@ export default function PublicacionDetalle() {
     };
 
     const cargarMascotaVinculada = async (idMascota: string, currentUserId: string | null) => {
+      // La mascota vinculada se cachea solo si pertenece al usuario actual.
       if (!idMascota) {
         setMascota(null);
         return;
@@ -127,6 +129,7 @@ export default function PublicacionDetalle() {
     };
 
     const cargarDesdeLocal = async (): Promise<boolean> => {
+      // Fallback para publicaciones locales pendientes o cuando no hay conectividad.
       const local = obtenerPublicacionLocal(id);
       if (local && !local.eliminadoLocal) {
         const { id: _, pendienteSync: ps, creadoLocal, eliminadoLocal, ...data } = local;
@@ -178,6 +181,7 @@ export default function PublicacionDetalle() {
   }, [id, isConnected]);
 
   const resolverPublicacion = () => {
+    // Marca como resuelta una publicacion de tipo perdidos, online u offline.
     Alert.alert(
       "Marcar como encontrado",
       `¿Confirmas que ${mascota?.nombre ?? "la mascota"} ya fue encontrada?`,
@@ -261,6 +265,7 @@ export default function PublicacionDetalle() {
   };
 
   const exportarReporte = async () => {
+    // Crea un reporte local con la publicacion y, si existe, su mascota asociada.
     if (!publicacion) return;
     try {
       const usuario = userId === publicacion.idUsuario && userId

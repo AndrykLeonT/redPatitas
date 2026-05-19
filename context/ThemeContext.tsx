@@ -61,6 +61,7 @@ const ThemeContext = createContext<ThemeContextType>({
 // ─── Provider ──────────────────────────────────────────────────────────────────
 const STORAGE_KEY = "isDarkMode";
 
+// Proveedor de tema: persiste modo oscuro y centraliza la paleta de la app.
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [loaded, setLoaded] = useState(false);

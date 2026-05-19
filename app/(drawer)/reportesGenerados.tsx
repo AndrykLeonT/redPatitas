@@ -29,6 +29,7 @@ import {
   leerReporteTxt,
 } from "../../utils/reportFiles";
 
+// Pantalla local de reportes TXT: lista, busca, abre, edita, comparte y elimina archivos.
 export default function ReportesGenerados() {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
@@ -109,6 +110,7 @@ export default function ReportesGenerados() {
   };
 
   const guardarEdicion = async () => {
+    // La edicion solo cambia el TXT local; no modifica mascotas, publicaciones ni Firebase.
     if (!modalReporte) return;
     setGuardando(true);
     try {

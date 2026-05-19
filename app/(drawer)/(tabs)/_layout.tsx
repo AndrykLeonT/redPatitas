@@ -3,6 +3,7 @@ import { Tabs } from "expo-router";
 import { Image } from "react-native";
 import { useTheme } from "../../../context/ThemeContext";
 
+// Tabs principales: feed global, mapa y estadisticas publicas.
 export default function TabsLayout() {
   const { colors, isDarkMode } = useTheme();
   return (

@@ -41,6 +41,7 @@ export function usePendingSync() {
   const dismiss = () => setShouldPrompt(false);
 
   const runSync = async () => {
+    // Ejecuta la cola pendiente del usuario activo y actualiza el contador del modal.
     const userId = await AsyncStorage.getItem("userId");
     if (!userId) {
       setShouldPrompt(false);

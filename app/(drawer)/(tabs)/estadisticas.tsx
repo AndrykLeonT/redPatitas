@@ -19,6 +19,7 @@ import { Publicacion, Usuario } from "../../../models/firebaseModels";
 const SCREEN_W = Dimensions.get("window").width;
 const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
 
+// Grafica SVG simple para relacionar cantidad de fotos con dias hasta resolucion.
 function ScatterPlot({
   data,
   width,
@@ -91,6 +92,7 @@ function ScatterPlot({
   );
 }
 
+// Pantalla de estadisticas globales basada en publicaciones y usuarios de Firebase.
 export default function EstadisticasScreen() {
   const { colors } = useTheme();
   const styles = makeStyles(colors);
