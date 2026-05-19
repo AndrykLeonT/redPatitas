@@ -74,7 +74,33 @@ export default function PublicacionDetalle() {
   useEffect(() => {
     if (!id) return;
 
-    const cargarMascotaVinculada = async (idMascota: string) => {
+    const cachearMascotaSiEsPersonal = (
+      idMascota: string,
+      data: Mascota,
+      currentUserId: string | null,
+    ) => {
+      if (!currentUserId || data.idUsuario !== currentUserId) return;
+      try {
+        cacheMascotaDesdeFirebase(idMascota, data);
+      } catch (error) {
+        console.warn("No se pudo cachear mascota personal", error);
+      }
+    };
+
+    const cachearPublicacionSiEsPersonal = (
+      idPublicacion: string,
+      data: Publicacion,
+      currentUserId: string | null,
+    ) => {
+      if (!currentUserId || data.idUsuario !== currentUserId) return;
+      try {
+        cachePublicacionDesdeFirebase(idPublicacion, data);
+      } catch (error) {
+        console.warn("No se pudo cachear publicación personal", error);
+      }
+    };
+
+    const cargarMascotaVinculada = async (idMascota: string, currentUserId: string | null) => {
       if (!idMascota) {
         setMascota(null);
         return;
@@ -91,7 +117,7 @@ export default function PublicacionDetalle() {
         if (mascSnap.exists()) {
           const m = mascSnap.val() as Mascota;
           setMascota(m);
-          cacheMascotaDesdeFirebase(idMascota, m);
+          cachearMascotaSiEsPersonal(idMascota, m, currentUserId);
         } else {
           setMascota(local ?? null);
         }
@@ -106,13 +132,18 @@ export default function PublicacionDetalle() {
         const { id: _, pendienteSync: ps, creadoLocal, eliminadoLocal, ...data } = local;
         setPublicacion(data as Publicacion);
         setPendienteSync(Boolean(ps || creadoLocal));
-        await cargarMascotaVinculada(data.idMascota ?? "");
+        await cargarMascotaVinculada(data.idMascota ?? "", data.idUsuario);
         return true;
       }
       return false;
     };
 
     (async () => {
+      setError(false);
+      setIsLoading(true);
+      const currentUserId = await AsyncStorage.getItem("userId");
+      setUserId(currentUserId);
+
       if (esIdLocal(id)) {
         if (!(await cargarDesdeLocal())) setError(true);
         setIsLoading(false);
@@ -135,9 +166,9 @@ export default function PublicacionDetalle() {
         const pub = pubSnap.val() as Publicacion;
         setPublicacion(pub);
         setPendienteSync(false);
-        cachePublicacionDesdeFirebase(id, pub);
+        cachearPublicacionSiEsPersonal(id, pub, currentUserId);
 
-        await cargarMascotaVinculada(pub.idMascota ?? "");
+        await cargarMascotaVinculada(pub.idMascota ?? "", currentUserId);
       } catch {
         if (!(await cargarDesdeLocal())) setError(true);
       } finally {
