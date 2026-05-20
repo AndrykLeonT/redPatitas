@@ -1,3 +1,4 @@
+
 # Progreso — Implementación offline-first parcial
 
 Referencia: `.claude/command/guia_offline_sqlite_redpatitas.md`
