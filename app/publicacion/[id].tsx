@@ -39,6 +39,8 @@ import {
   eliminarPublicacionEnFirebase,
 } from "../../services/firebasePersonalService";
 import { cacheMascotaDesdeFirebase, cachePublicacionDesdeFirebase } from "../../services/syncService";
+import { formatearEdad } from "../../utils/dateUtils";
+import { obtenerTituloPublicacion } from "../../utils/publicacionText";
 import { compartirReporteTxt, crearNombreArchivo, guardarReporteTxt } from "../../utils/reportFiles";
 import { generarReportePublicacion } from "../../utils/reportTemplates";
 
@@ -181,10 +183,21 @@ export default function PublicacionDetalle() {
   }, [id, isConnected]);
 
   const resolverPublicacion = () => {
-    // Marca como resuelta una publicacion de tipo perdidos, online u offline.
+    // Alterna el estado de resolucion de cualquier publicacion propia.
+    if (!publicacion || !userId || userId !== publicacion.idUsuario) {
+      Alert.alert("Sin permisos", "Solo quien creo la publicacion puede modificarla.");
+      return;
+    }
+
+    const estaResuelta = publicacion.estado === "resuelto";
+    const nuevoEstado = estaResuelta ? "activo" : "resuelto";
+    const fechaResolucion = estaResuelta ? undefined : new Date().toISOString();
+
     Alert.alert(
-      "Marcar como encontrado",
-      `¿Confirmas que ${mascota?.nombre ?? "la mascota"} ya fue encontrada?`,
+      estaResuelta ? "Marcar como sin resolver" : "Marcar como resuelta",
+      estaResuelta
+        ? "¿Confirmas que esta publicación volverá a aparecer como sin resolver?"
+        : "¿Confirmas que esta publicación ya fue resuelta?",
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -192,11 +205,11 @@ export default function PublicacionDetalle() {
           onPress: async () => {
             setResolving(true);
             try {
-              const fechaResolucion = new Date().toISOString();
-              const actualizada = publicacion
-                ? { ...publicacion, estado: "resuelto", fechaResolucion }
-                : null;
-              if (!actualizada) return;
+              const actualizada: Publicacion = {
+                ...publicacion,
+                estado: nuevoEstado,
+                fechaResolucion: fechaResolucion ?? null,
+              };
 
               if (isConnected === false) {
                 guardarPublicacionLocal(id, actualizada, {
@@ -208,8 +221,8 @@ export default function PublicacionDetalle() {
                 setPendienteSync(true);
               } else {
                 await actualizarPublicacionEnFirebase(id, {
-                  estado: "resuelto",
-                  fechaResolucion,
+                  estado: nuevoEstado,
+                  fechaResolucion: fechaResolucion ?? null,
                 });
                 guardarPublicacionLocal(id, actualizada);
               }
@@ -226,6 +239,11 @@ export default function PublicacionDetalle() {
   };
 
   const eliminar = () => {
+    if (!publicacion || !userId || userId !== publicacion.idUsuario) {
+      Alert.alert("Sin permisos", "Solo quien creo la publicacion puede eliminarla.");
+      return;
+    }
+
     Alert.alert(
       "Eliminar publicación",
       "¿Seguro que deseas eliminar esta publicación? Esta acción no se puede deshacer.",
@@ -277,12 +295,12 @@ export default function PublicacionDetalle() {
         mascota,
         usuario,
       });
-      const tituloBase = mascota?.nombre || publicacion.tipo || "publicacion";
+      const tituloBase = obtenerTituloPublicacion(publicacion);
       const fileName = crearNombreArchivo("publicacion", tituloBase);
       const fileUri = await guardarReporteTxt(fileName, contenido);
       insertarReporteGenerado({
         userId: userId ?? null,
-        titulo: `Reporte de publicación: ${TIPO_LABEL[publicacion.tipo] ?? publicacion.tipo}`,
+        titulo: `Reporte de publicacion: ${tituloBase}`,
         tipo: tipoReporteDesdePublicacion(publicacion),
         entidadOrigen: esOwner ? "publicacion" : "global",
         entidadId: id,
@@ -333,21 +351,28 @@ export default function PublicacionDetalle() {
   const tipo = publicacion.tipo ?? "reporte";
   const color = TIPO_COLOR[tipo] ?? "#6B7280";
   const label = TIPO_LABEL[tipo] ?? tipo;
+  const tituloPublicacion = obtenerTituloPublicacion(publicacion);
+  const publicacionResuelta = publicacion.estado === "resuelto";
 
   return (
     <ScrollView style={styles.bg} contentContainerStyle={styles.content}>
       <Stack.Screen
         options={{
-          title: mascota?.nombre ?? "Publicación",
+          title: tituloPublicacion,
           headerShown: true,
           headerTintColor: colors.accent,
           headerStyle: { backgroundColor: colors.surface },
           headerTitleStyle: { color: colors.text, fontWeight: "bold" },
           ...(esOwner && {
             headerRight: () => (
-              <Pressable onPress={eliminar} style={{ marginRight: 12 }} disabled={deleting}>
-                <Ionicons name="trash-outline" size={22} color={colors.danger} />
-              </Pressable>
+              <View style={styles.headerActions}>
+                <Pressable onPress={() => router.push(`/publicacion/nueva?id=${id}` as any)} disabled={deleting}>
+                  <Ionicons name="create-outline" size={22} color={colors.accent} />
+                </Pressable>
+                <Pressable onPress={eliminar} disabled={deleting}>
+                  <Ionicons name="trash-outline" size={22} color={colors.danger} />
+                </Pressable>
+              </View>
             ),
           }),
         }}
@@ -443,13 +468,14 @@ export default function PublicacionDetalle() {
 
       {/* Tipo */}
       <View style={styles.headerInfo}>
+        <Text style={styles.tituloPublicacion}>{tituloPublicacion}</Text>
         <View style={[styles.tag, { backgroundColor: color }]}>
           <Text style={styles.tagText}>{label}</Text>
         </View>
         {pendienteSync && <PendingSyncBadge />}
-        {publicacion.estado ? (
-          <Text style={styles.estado}>Estado: {publicacion.estado}</Text>
-        ) : null}
+        <Text style={styles.estado}>
+          Estado: {publicacionResuelta ? "Resuelto" : "Sin resolver"}
+        </Text>
         <Text style={styles.fecha}>
           {new Date(publicacion.fechaRegistro).toLocaleDateString("es-MX", {
             year: "numeric", month: "long", day: "numeric",
@@ -469,7 +495,7 @@ export default function PublicacionDetalle() {
                 {mascota.tipoAnimal} · {mascota.raza} · {mascota.sexo}
               </Text>
               <Text style={styles.mascotaSub}>
-                {mascota.edad} {mascota.edad === 1 ? "año" : "años"} · {mascota.peso} kg
+                {formatearEdad(mascota.fechaNacimiento)} · {mascota.peso} kg
               </Text>
             </View>
           </View>
@@ -500,23 +526,30 @@ export default function PublicacionDetalle() {
         </View>
       ) : null}
 
-      {/* Likes */}
-      <View style={styles.card}>
-        <View style={styles.likesRow}>
-          <Ionicons name="heart" size={20} color={colors.danger} />
-          <Text style={styles.likesText}>{publicacion.likes ?? 0} personas están atentas</Text>
-        </View>
-      </View>
-
-      {/* Marcar como encontrado — solo dueño, tipo perdidos, no resuelto */}
-      {esOwner && tipo === "perdidos" && publicacion.estado !== "resuelto" && (
+      {/* Resolver o reabrir: solo creador */}
+      {esOwner && (
         <Pressable
-          style={[styles.btnResolver, resolving && { opacity: 0.6 }]}
+          style={[
+            styles.btnResolver,
+            publicacionResuelta && styles.btnReabrir,
+            resolving && { opacity: 0.6 },
+          ]}
           onPress={resolverPublicacion}
           disabled={resolving}
         >
-          <Ionicons name="checkmark-circle-outline" size={18} color="#10B981" />
-          <Text style={styles.btnResolverText}>Marcar como encontrado</Text>
+          <Ionicons
+            name={publicacionResuelta ? "refresh-circle-outline" : "checkmark-circle-outline"}
+            size={18}
+            color={publicacionResuelta ? colors.accent : "#10B981"}
+          />
+          <Text
+            style={[
+              styles.btnResolverText,
+              publicacionResuelta && styles.btnReabrirText,
+            ]}
+          >
+            {publicacionResuelta ? "Marcar como sin resolver" : "Marcar como resuelta"}
+          </Text>
         </Pressable>
       )}
 
@@ -570,8 +603,10 @@ const makeStyles = (colors: ThemeColors) =>
       paddingHorizontal: 14,
     },
     tagText: { color: "#FFF", fontWeight: "bold", fontSize: 13 },
+    tituloPublicacion: { fontSize: 24, fontWeight: "bold", color: colors.text },
     estado: { fontSize: 14, color: colors.textSecondary },
     fecha: { fontSize: 13, color: colors.textSecondary },
+    headerActions: { flexDirection: "row", alignItems: "center", gap: 14, marginRight: 12 },
     card: {
       backgroundColor: colors.surface,
       marginHorizontal: 16,
@@ -588,8 +623,6 @@ const makeStyles = (colors: ThemeColors) =>
     descripcion: { fontSize: 14, color: colors.textSecondary, lineHeight: 22 },
     ubicacionRow: { flexDirection: "row", alignItems: "center", gap: 6 },
     ubicacionText: { fontSize: 14, color: colors.textSecondary },
-    likesRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-    likesText: { fontSize: 14, color: colors.textSecondary },
     btnEliminar: {
       flexDirection: "row",
       alignItems: "center",
@@ -618,6 +651,8 @@ const makeStyles = (colors: ThemeColors) =>
       backgroundColor: colors.surface,
     },
     btnResolverText: { color: "#10B981", fontWeight: "bold", fontSize: 15 },
+    btnReabrir: { borderColor: colors.accent },
+    btnReabrirText: { color: colors.accent },
     btnExportar: {
       flexDirection: "row",
       alignItems: "center",

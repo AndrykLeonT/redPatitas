@@ -27,6 +27,8 @@ import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { Adopcion, Mascota, Publicacion, Usuario } from "../../models/firebaseModels";
 import { cacheMascotaDesdeFirebase, cachePublicacionDesdeFirebase } from "../../services/syncService";
 import { AVATARES } from "../../utils/avatars";
+import { formatearEdad } from "../../utils/dateUtils";
+import { obtenerTituloPublicacion } from "../../utils/publicacionText";
 
 type MascotaItem = { id: string; data: Mascota };
 type PubItem = { id: string; data: Publicacion };
@@ -34,7 +36,7 @@ type PubItem = { id: string; data: Publicacion };
 const SCREEN_W = Dimensions.get("window").width;
 
 const TIPO_LABEL: Record<string, string> = {
-  reporte: "Reporte", perdidos: "Perdidos", recreacion: "Recreación",
+  reporte: "Reporte", perdidos: "Perdidos", recreacion: "RecreaciÃ³n",
 };
 const TIPO_COLOR: Record<string, string> = {
   reporte: "#EF4444", perdidos: "#F59E0B", recreacion: "#10B981",
@@ -42,7 +44,7 @@ const TIPO_COLOR: Record<string, string> = {
 
 const PIE_COLORS = ["#FF8C42", "#4F6D7A", "#10B981", "#F59E0B", "#EF4444", "#6366F1"];
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-const DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+const DIAS = ["Dom", "Lun", "Mar", "MiÃ©", "Jue", "Vie", "SÃ¡b"];
 
 const PREVIEW = 3;
 
@@ -72,7 +74,7 @@ export default function PerfilScreen() {
   const [mascotas, setMascotas] = useState<MascotaItem[]>([]);
   const [publicaciones, setPublicaciones] = useState<PubItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [periodo, setPeriodo] = useState<"semana" | "mes" | "año">("semana");
+  const [periodo, setPeriodo] = useState<"semana" | "mes" | "aÃ±o">("semana");
   const [userRole, setUserRole] = useState<string | null>(null);
   const [adopciones, setAdopciones] = useState<{ id: string; data: Adopcion }[]>([]);
 
@@ -113,13 +115,13 @@ export default function PerfilScreen() {
         setAdopciones(adoptLocal);
       };
 
-      // Sin conexión: solo SQLite
+      // Sin conexiÃ³n: solo SQLite
       if (isConnected === false) {
         cargarDesdeLocal();
         return;
       }
 
-      // Con conexión (o aún sin determinar): Firebase primero, fallback a SQLite si falla
+      // Con conexiÃ³n (o aÃºn sin determinar): Firebase primero, fallback a SQLite si falla
       try {
         const [userSnap, mascSnap, pubSnap, adoptSnap] = await Promise.all([
           get(ref(db, `usuarios/${userId}`)),
@@ -173,10 +175,10 @@ export default function PerfilScreen() {
         }
         setAdopciones(adoptArr);
 
-        // Recalcular estadísticas con el snapshot fresco
+        // Recalcular estadÃ­sticas con el snapshot fresco
         recalcularYGuardarEstadisticas(userId);
       } catch (firebaseErr) {
-        console.warn("Firebase falló al cargar perfil, fallback a SQLite", firebaseErr);
+        console.warn("Firebase fallÃ³ al cargar perfil, fallback a SQLite", firebaseErr);
         cargarDesdeLocal();
       }
     } catch (e) {
@@ -277,14 +279,14 @@ export default function PerfilScreen() {
   const eliminarCuenta = () => {
     if (isConnected === false) {
       Alert.alert(
-        "Sin conexión",
-        "Eliminar tu cuenta requiere conexión a internet.",
+        "Sin conexiÃ³n",
+        "Eliminar tu cuenta requiere conexiÃ³n a internet.",
       );
       return;
     }
     Alert.alert(
       "Eliminar cuenta",
-      "Se eliminarán tu perfil, todas tus mascotas y publicaciones. Esta acción no se puede deshacer.",
+      "Se eliminarÃ¡n tu perfil, todas tus mascotas y publicaciones. Esta acciÃ³n no se puede deshacer.",
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -344,6 +346,10 @@ export default function PerfilScreen() {
 
       {/* Header */}
       <View style={styles.headerCard}>
+        <Pressable style={styles.btnEditarPerfil} onPress={() => router.push("/registro?edit=1" as any)}>
+          <Ionicons name="create-outline" size={18} color={colors.accent} />
+          <Text style={styles.btnEditarPerfilText}>Editar</Text>
+        </Pressable>
         <Image source={resolverAvatar(usuario?.fotoPerfil ?? null)} style={styles.avatar} />
         <Text style={styles.nombre}>{usuario?.nombreCompleto ?? "Usuario"}</Text>
         <View style={styles.rolBadge}>
@@ -416,8 +422,8 @@ export default function PerfilScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemTitle}>{item.data.nombre}</Text>
                 <Text style={styles.itemSub}>
-                  {item.data.tipoAnimal} · {item.data.raza} ·{" "}
-                  {item.data.edad} {item.data.edad === 1 ? "año" : "años"}
+                  {item.data.tipoAnimal} Â· {item.data.raza} Â·{" "}
+                  {formatearEdad(item.data.fechaNacimiento)}
                 </Text>
               </View>
               <Ionicons name="chevron-forward" size={20} color={colors.textSecondary} />
@@ -425,7 +431,7 @@ export default function PerfilScreen() {
           ))}
           {mascotas.length > PREVIEW && (
             <Pressable style={styles.verMasBtn} onPress={() => router.push("/(drawer)/misMascotas" as any)}>
-              <Text style={styles.verMasBtnText}>Ver {mascotas.length - PREVIEW} más →</Text>
+              <Text style={styles.verMasBtnText}>Ver {mascotas.length - PREVIEW} mÃ¡s â†’</Text>
             </Pressable>
           )}
         </>
@@ -474,7 +480,7 @@ export default function PerfilScreen() {
                     <Text style={styles.tagSmallText}>{TIPO_LABEL[item.data.tipo] ?? item.data.tipo}</Text>
                   </View>
                   <Text style={styles.itemTitle} numberOfLines={2}>
-                    {item.data.descripcion || "Sin descripción"}
+                    {obtenerTituloPublicacion(item.data)}
                   </Text>
                   <Text style={styles.itemSub}>
                     {new Date(item.data.fechaRegistro).toLocaleDateString("es-MX")}
@@ -486,21 +492,21 @@ export default function PerfilScreen() {
           })}
           {publicaciones.length > PREVIEW && (
             <Pressable style={styles.verMasBtn} onPress={() => router.push("/(drawer)/misPublicaciones" as any)}>
-              <Text style={styles.verMasBtnText}>Ver {publicaciones.length - PREVIEW} más →</Text>
+              <Text style={styles.verMasBtnText}>Ver {publicaciones.length - PREVIEW} mÃ¡s â†’</Text>
             </Pressable>
           )}
         </>
       )}
 
-      {/* Estadísticas */}
+      {/* EstadÃ­sticas */}
       <View style={[styles.sectionHeader, { marginTop: 8 }]}>
-        <Text style={styles.sectionTitle}>Estadísticas</Text>
+        <Text style={styles.sectionTitle}>EstadÃ­sticas</Text>
       </View>
 
-      {/* Pie Chart — distribución de mascotas */}
+      {/* Pie Chart â€” distribuciÃ³n de mascotas */}
       {mascotas.length > 0 ? (
         <View style={styles.chartCard}>
-          <Text style={styles.chartTitle}>Distribución de mascotas</Text>
+          <Text style={styles.chartTitle}>DistribuciÃ³n de mascotas</Text>
           <PieChart
             data={pieData}
             donut
@@ -534,22 +540,22 @@ export default function PerfilScreen() {
       ) : (
         <View style={styles.emptySection}>
           <Ionicons name="pie-chart-outline" size={36} color={colors.textSecondary} />
-          <Text style={styles.emptySectionText}>Registra mascotas para ver estadísticas.</Text>
+          <Text style={styles.emptySectionText}>Registra mascotas para ver estadÃ­sticas.</Text>
         </View>
       )}
 
-      {/* Line Chart — actividad de publicaciones */}
+      {/* Line Chart â€” actividad de publicaciones */}
       <View style={styles.chartCard}>
         <Text style={styles.chartTitle}>Actividad de publicaciones</Text>
         <View style={styles.periodoRow}>
-          {(["semana", "mes", "año"] as const).map((p) => (
+          {(["semana", "mes", "aÃ±o"] as const).map((p) => (
             <Pressable
               key={p}
               style={[styles.periodoChip, periodo === p && styles.periodoChipActivo]}
               onPress={() => setPeriodo(p)}
             >
               <Text style={[styles.periodoChipText, periodo === p && { color: colors.textInverse }]}>
-                {p === "semana" ? "Semana" : p === "mes" ? "Mes" : "Año"}
+                {p === "semana" ? "Semana" : p === "mes" ? "Mes" : "AÃ±o"}
               </Text>
             </Pressable>
           ))}
@@ -585,7 +591,7 @@ export default function PerfilScreen() {
         )}
       </View>
 
-      {/* Panel de Adopciones — solo Refugio */}
+      {/* Panel de Adopciones â€” solo Refugio */}
       {userRole === "Refugio" && (
         <>
           <View style={[styles.sectionHeader, { marginTop: 8 }]}>
@@ -595,12 +601,12 @@ export default function PerfilScreen() {
           {adopciones.length === 0 ? (
             <View style={styles.emptySection}>
               <Ionicons name="stats-chart-outline" size={36} color={colors.textSecondary} />
-              <Text style={styles.emptySectionText}>Aún no hay adopciones registradas.</Text>
+              <Text style={styles.emptySectionText}>AÃºn no hay adopciones registradas.</Text>
             </View>
           ) : (
             <>
               <View style={styles.chartCard}>
-                <Text style={styles.chartTitle}>Perros vs. Gatos adoptados (últimos 6 meses)</Text>
+                <Text style={styles.chartTitle}>Perros vs. Gatos adoptados (Ãºltimos 6 meses)</Text>
                 <View style={[styles.pieLeyenda, { marginBottom: 14 }]}>
                   <View style={styles.pieLeyendaItem}>
                     <View style={[styles.pieLeyendaDot, { backgroundColor: "#FF8C42" }]} />
@@ -673,6 +679,16 @@ const makeStyles = (colors: ThemeColors) =>
       marginBottom: 8,
       elevation: 2,
     },
+    btnEditarPerfil: {
+      position: "absolute",
+      top: 12,
+      right: 12,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      zIndex: 1,
+    },
+    btnEditarPerfilText: { color: colors.accent, fontWeight: "bold", fontSize: 13 },
     avatar: { width: 90, height: 90, borderRadius: 45, marginBottom: 12 },
     nombre: { fontSize: 22, fontWeight: "bold", color: colors.text },
     rolBadge: {

@@ -16,7 +16,6 @@ type MascotaRow = {
   raza: string | null;
   comportamiento: string | null;
   rasgosParticulares: string | null;
-  edad: number | null;
   peso: number | null;
   fechaNacimiento: string | null;
   fechaRegistro: string | null;
@@ -52,7 +51,6 @@ function rowToMascotaConMeta(row: MascotaRow): MascotaConMeta {
     raza: row.raza ?? "",
     comportamiento: row.comportamiento ?? "",
     rasgosParticulares: row.rasgosParticulares ?? "",
-    edad: row.edad ?? 0,
     peso: row.peso ?? 0,
     fechaNacimiento: row.fechaNacimiento ?? "",
     fechaRegistro: row.fechaRegistro ?? "",
@@ -81,10 +79,10 @@ export function guardarMascotaLocal(
   localDb.runSync(
     `INSERT OR REPLACE INTO mascotas_local (
       id, idUsuario, nombre, tipoAnimal, raza, comportamiento, rasgosParticulares,
-      edad, peso, fechaNacimiento, fechaRegistro, enfermedadesJson, vacunasJson,
+      peso, fechaNacimiento, fechaRegistro, enfermedadesJson, vacunasJson,
       sexo, esterilizado, fotosJson, datosJson, pendienteSync, eliminadoLocal,
       creadoLocal, actualizadoEn
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       mascota.idUsuario,
@@ -93,7 +91,6 @@ export function guardarMascotaLocal(
       mascota.raza ?? null,
       mascota.comportamiento ?? null,
       mascota.rasgosParticulares ?? null,
-      mascota.edad ?? null,
       mascota.peso ?? null,
       mascota.fechaNacimiento ?? null,
       mascota.fechaRegistro ?? null,

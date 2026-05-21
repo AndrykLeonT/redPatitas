@@ -10,7 +10,20 @@ export function initLocalDb() {
   if (initialized) return;
   localDb.execSync("PRAGMA foreign_keys = ON;");
   localDb.execSync(CREATE_TABLES_SQL);
+  migrarPublicacionesLocal();
   initialized = true;
+}
+
+function columnExists(table: string, column: string): boolean {
+  const rows = localDb.getAllSync<{ name: string }>(`PRAGMA table_info(${table})`);
+  return rows.some((row) => row.name === column);
+}
+
+function migrarPublicacionesLocal() {
+  // Agrega campos nuevos en instalaciones que ya tenian la tabla creada.
+  if (!columnExists("publicaciones_local", "titulo")) {
+    localDb.execSync("ALTER TABLE publicaciones_local ADD COLUMN titulo TEXT NOT NULL DEFAULT '';");
+  }
 }
 
 // Borra la cache personal local; se usa al preparar datos para una nueva sesion.

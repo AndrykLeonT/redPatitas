@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
 import * as Location from "expo-location";
 import { get, ref } from "firebase/database";
@@ -25,21 +25,26 @@ import { registrarCambioPendiente } from "../../database/cambiosPendientes";
 import { recalcularYGuardarEstadisticas } from "../../database/estadisticasLocal";
 import { nuevoIdLocal } from "../../database/localDb";
 import { listarMascotasPorUsuario } from "../../database/mascotasLocal";
-import { guardarPublicacionLocal } from "../../database/publicacionesLocal";
+import { guardarPublicacionLocal, obtenerPublicacionLocal } from "../../database/publicacionesLocal";
 import { useNetworkStatus } from "../../hooks/useNetworkStatus";
+import { useShake } from "../../hooks/useShake";
 import { Mascota, Publicacion } from "../../models/firebaseModels";
 import { subirImagen } from "../../services/cloudinaryService";
-import { crearPublicacionEnFirebase } from "../../services/firebasePersonalService";
+import { actualizarPublicacionEnFirebase, crearPublicacionEnFirebase } from "../../services/firebasePersonalService";
 import { cacheMascotaDesdeFirebase } from "../../services/syncService";
 
 type MascotaOpt = { id: string; nombre: string };
 
 const MAX_FOTOS = 5;
 
+const resolverFoto = async (uri: string) => (
+  uri.startsWith("http://") || uri.startsWith("https://") ? uri : subirImagen(uri)
+);
+
 const TIPOS = [
   { key: "reporte" as const, label: "Reporte", color: "#EF4444" },
   { key: "perdidos" as const, label: "Perdidos", color: "#F59E0B" },
-  { key: "recreacion" as const, label: "Recreación", color: "#10B981" },
+  { key: "recreacion" as const, label: "RecreaciÃ³n", color: "#10B981" },
 ];
 
 const FALLBACK_REGION = {
@@ -51,16 +56,19 @@ const FALLBACK_REGION = {
 
 // Formulario de publicacion con fotos, ubicacion opcional y soporte offline.
 export default function NuevaPublicacion() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
   const { isConnected } = useNetworkStatus();
 
   const [tipo, setTipo] = useState<"reporte" | "perdidos" | "recreacion">("reporte");
+  const [titulo, setTitulo] = useState("");
   const [descripcion, setDescripcion] = useState("");
   const [idMascota, setIdMascota] = useState<string | null>(null);
   const [fotosLocales, setFotosLocales] = useState<string[]>([]);
   const [ubicacion, setUbicacion] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [fechaRegistroOriginal, setFechaRegistroOriginal] = useState("");
 
   const [mascotas, setMascotas] = useState<MascotaOpt[]>([]);
   const [mapRegion, setMapRegion] = useState(FALLBACK_REGION);
@@ -70,6 +78,31 @@ export default function NuevaPublicacion() {
   const [loadingMascotas, setLoadingMascotas] = useState(true);
   const [showMapPicker, setShowMapPicker] = useState(false);
   const [tempMarker, setTempMarker] = useState<{ latitude: number; longitude: number } | null>(null);
+  const isEditing = Boolean(id);
+
+  useShake(() => {
+    setTitulo("");
+    setDescripcion("");
+  });
+
+  useEffect(() => {
+    if (!id) return;
+    const cargarDatos = (data: Publicacion) => {
+      setTipo(data.tipo ?? "reporte");
+      setTitulo(data.titulo ?? "");
+      setDescripcion(data.descripcion ?? "");
+      setIdMascota(data.idMascota ?? null);
+      setFotosLocales(Object.values(data.fotos ?? {}));
+      setUbicacion(data.ubicacion ?? null);
+      setFechaRegistroOriginal(data.fechaRegistro ?? "");
+    };
+    const local = obtenerPublicacionLocal(id);
+    if (local) cargarDatos(local);
+    if (isConnected === false) return;
+    get(ref(db, `publicaciones/${id}`))
+      .then((snap) => { if (snap.exists()) cargarDatos(snap.val() as Publicacion); })
+      .catch(() => {});
+  }, [id, isConnected]);
 
   useEffect(() => {
     (async () => {
@@ -123,13 +156,13 @@ export default function NuevaPublicacion() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permiso requerido", "Necesitamos acceso a tu ubicación.");
+        Alert.alert("Permiso requerido", "Necesitamos acceso a tu ubicaciÃ³n.");
         return;
       }
       const loc = await Location.getCurrentPositionAsync({});
       setUbicacion({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
     } catch {
-      Alert.alert("Error", "No se pudo obtener tu ubicación.");
+      Alert.alert("Error", "No se pudo obtener tu ubicaciÃ³n.");
     }
   };
 
@@ -146,7 +179,7 @@ export default function NuevaPublicacion() {
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permiso requerido", "Necesitamos acceso a tu galería.");
+      Alert.alert("Permiso requerido", "Necesitamos acceso a tu galerÃ­a.");
       return;
     }
     const remaining = MAX_FOTOS - fotosLocales.length;
@@ -171,14 +204,18 @@ export default function NuevaPublicacion() {
 
   const publicar = async () => {
     // Offline conserva fotos como URI local; la sincronizacion las sube luego a Cloudinary.
+    if (!titulo.trim()) {
+      Alert.alert("Error", "El titulo de la publicacion es obligatorio.");
+      return;
+    }
     if (!descripcion.trim()) {
-      Alert.alert("Error", "La descripción es obligatoria.");
+      Alert.alert("Error", "La descripciÃ³n es obligatoria.");
       return;
     }
     setIsLoading(true);
     try {
       const userId = await AsyncStorage.getItem("userId");
-      if (!userId) { Alert.alert("Error", "No hay sesión activa."); return; }
+      if (!userId) { Alert.alert("Error", "No hay sesiÃ³n activa."); return; }
 
       if (isConnected === false) {
         const fotosRecord: Record<string, string> = {};
@@ -190,20 +227,24 @@ export default function NuevaPublicacion() {
           idUsuario: userId,
           ...(idMascota ? { idMascota } : {}),
           tipo,
+          titulo: titulo.trim(),
           descripcion: descripcion.trim(),
-          fechaRegistro: new Date().toISOString(),
+          fechaRegistro: fechaRegistroOriginal || new Date().toISOString(),
           likes: 0,
           fotos: fotosRecord,
           estado: "activo",
           ...(ubicacion ? { ubicacion } : {}),
         };
-        const idLocal = nuevoIdLocal();
-        guardarPublicacionLocal(idLocal, nueva, { pendienteSync: true, creadoLocal: true });
-        registrarCambioPendiente(userId, "publicacion", idLocal, "crear", nueva);
+        const idLocal = id ?? nuevoIdLocal();
+        guardarPublicacionLocal(idLocal, nueva, {
+          pendienteSync: true,
+          creadoLocal: !isEditing || idLocal.startsWith("local_"),
+        });
+        registrarCambioPendiente(userId, "publicacion", idLocal, isEditing ? "actualizar" : "crear", nueva);
         recalcularYGuardarEstadisticas(userId);
         Alert.alert(
-          "Publicación guardada localmente",
-          "Se sincronizará cuando vuelva la conexión.",
+          "PublicaciÃ³n guardada localmente",
+          "Se sincronizarÃ¡ cuando vuelva la conexiÃ³n.",
           [{ text: "OK", onPress: () => router.back() }],
         );
         return;
@@ -212,30 +253,32 @@ export default function NuevaPublicacion() {
       const fotosRecord: Record<string, string> = {};
       for (let i = 0; i < fotosLocales.length; i++) {
         setLoadingStatus(`Subiendo foto ${i + 1} de ${fotosLocales.length}...`);
-        const url = await subirImagen(fotosLocales[i]);
+        const url = await resolverFoto(fotosLocales[i]);
         fotosRecord[`foto_${Date.now()}_${i}`] = url;
       }
 
-      setLoadingStatus("Guardando publicación...");
+      setLoadingStatus("Guardando publicaciÃ³n...");
       const nueva: Publicacion = {
         idUsuario: userId,
         ...(idMascota ? { idMascota } : {}),
         tipo,
+        titulo: titulo.trim(),
         descripcion: descripcion.trim(),
-        fechaRegistro: new Date().toISOString(),
+        fechaRegistro: fechaRegistroOriginal || new Date().toISOString(),
         likes: 0,
         fotos: fotosRecord,
         estado: "activo",
         ...(ubicacion ? { ubicacion } : {}),
       };
-      const idFirebase = await crearPublicacionEnFirebase(nueva);
+      const idFirebase = isEditing && id ? id : await crearPublicacionEnFirebase(nueva);
+      if (isEditing && id) await actualizarPublicacionEnFirebase(id, nueva);
       guardarPublicacionLocal(idFirebase, nueva);
       recalcularYGuardarEstadisticas(userId);
-      Alert.alert("¡Publicado!", "Tu publicación fue creada correctamente.", [
+      Alert.alert("¡Publicado!", isEditing ? "Tu publicación fue actualizada correctamente." : "Tu publicación fue creada correctamente.", [
         { text: "OK", onPress: () => router.back() },
       ]);
     } catch (e: any) {
-      Alert.alert("Error", e.message ?? "No se pudo crear la publicación.");
+      Alert.alert("Error", e.message ?? "No se pudo crear la publicaciÃ³n.");
     } finally {
       setIsLoading(false);
       setLoadingStatus("");
@@ -247,7 +290,7 @@ export default function NuevaPublicacion() {
       <ScrollView style={styles.bg} contentContainerStyle={styles.content}>
         <Stack.Screen
           options={{
-            title: "Nueva Publicación",
+            title: isEditing ? "Editar Publicación" : "Nueva Publicación",
             headerShown: true,
             headerTintColor: colors.accent,
             headerStyle: { backgroundColor: colors.surface },
@@ -259,7 +302,7 @@ export default function NuevaPublicacion() {
 
         {/* Tipo */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Tipo de publicación</Text>
+          <Text style={styles.cardTitle}>Tipo de publicaciÃ³n</Text>
           <View style={styles.tipoRow}>
             {TIPOS.map(({ key, label, color }) => (
               <Pressable
@@ -273,12 +316,25 @@ export default function NuevaPublicacion() {
           </View>
         </View>
 
-        {/* Descripción */}
+        {/* Titulo */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Descripción *</Text>
+          <Text style={styles.cardTitle}>Titulo de publicacion *</Text>
+          <TextInput
+            style={styles.input}
+            placeholder="Ej. Perrito visto cerca del parque"
+            placeholderTextColor={colors.textSecondary}
+            value={titulo}
+            onChangeText={setTitulo}
+            maxLength={80}
+          />
+        </View>
+
+        {/* DescripciÃ³n */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>DescripciÃ³n *</Text>
           <TextInput
             style={styles.textArea}
-            placeholder="Describe la situación: dónde fue visto, cuándo, características..."
+            placeholder="Describe la situaciÃ³n: dÃ³nde fue visto, cuÃ¡ndo, caracterÃ­sticas..."
             placeholderTextColor={colors.textSecondary}
             value={descripcion}
             onChangeText={setDescripcion}
@@ -339,13 +395,13 @@ export default function NuevaPublicacion() {
           )}
         </View>
 
-        {/* Ubicación */}
+        {/* UbicaciÃ³n */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Ubicación</Text>
+          <Text style={styles.cardTitle}>UbicaciÃ³n</Text>
           <View style={styles.ubicacionBtns}>
             <Pressable style={styles.ubicacionBtn} onPress={usarUbicacionActual}>
               <Ionicons name="locate-outline" size={18} color={colors.accent} />
-              <Text style={styles.ubicacionBtnText}>Ubicación actual</Text>
+              <Text style={styles.ubicacionBtnText}>UbicaciÃ³n actual</Text>
             </Pressable>
             <Pressable style={styles.ubicacionBtn} onPress={abrirMapaPicker}>
               <Ionicons name="map-outline" size={18} color={colors.accent} />
@@ -363,7 +419,7 @@ export default function NuevaPublicacion() {
               </Pressable>
             </View>
           ) : (
-            <Text style={[styles.textoVacio, { marginTop: 8 }]}>Sin ubicación seleccionada.</Text>
+            <Text style={[styles.textoVacio, { marginTop: 8 }]}>Sin ubicaciÃ³n seleccionada.</Text>
           )}
         </View>
 
@@ -404,7 +460,7 @@ export default function NuevaPublicacion() {
             <Text style={styles.mapHint}>
               {tempMarker
                 ? "Arrastra el marcador para ajustar"
-                : "Toca el mapa para seleccionar una ubicación"}
+                : "Toca el mapa para seleccionar una ubicaciÃ³n"}
             </Text>
             <View style={styles.mapBtns}>
               <Pressable style={styles.mapBtnCancelar} onPress={() => setShowMapPicker(false)}>
@@ -415,7 +471,7 @@ export default function NuevaPublicacion() {
                 onPress={confirmarUbicacion}
                 disabled={!tempMarker}
               >
-                <Text style={styles.mapBtnConfirmarText}>Confirmar ubicación</Text>
+                <Text style={styles.mapBtnConfirmarText}>Confirmar ubicaciÃ³n</Text>
               </Pressable>
             </View>
           </View>
@@ -449,6 +505,15 @@ const makeStyles = (colors: ThemeColors) =>
       backgroundColor: colors.background,
     },
     tipoBtnText: { fontSize: 13, fontWeight: "600", color: colors.textSecondary },
+    input: {
+      backgroundColor: colors.background,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+      padding: 12,
+      fontSize: 14,
+      color: colors.text,
+    },
     textArea: {
       backgroundColor: colors.background,
       borderRadius: 10,

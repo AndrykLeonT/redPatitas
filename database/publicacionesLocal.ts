@@ -1,4 +1,5 @@
 import { Publicacion } from "../models/firebaseModels";
+import { obtenerTituloPublicacion } from "../utils/publicacionText";
 import { localDb } from "./localDb";
 
 export type PublicacionConMeta = Publicacion & {
@@ -13,6 +14,7 @@ type PublicacionRow = {
   idUsuario: string;
   idMascota: string | null;
   tipo: string;
+  titulo: string | null;
   descripcion: string;
   fechaRegistro: string;
   likes: number;
@@ -51,6 +53,7 @@ function rowToPublicacionConMeta(row: PublicacionRow): PublicacionConMeta {
     idUsuario: row.idUsuario,
     ...(idMascota ? { idMascota } : {}),
     tipo: (row.tipo as Publicacion["tipo"]) ?? "reporte",
+    titulo: obtenerTituloPublicacion({ titulo: row.titulo ?? "" }),
     descripcion: row.descripcion,
     fechaRegistro: row.fechaRegistro,
     likes: row.likes ?? 0,
@@ -79,15 +82,16 @@ export function guardarPublicacionLocal(
   const ahora = new Date().toISOString();
   localDb.runSync(
     `INSERT OR REPLACE INTO publicaciones_local (
-      id, idUsuario, idMascota, tipo, descripcion, fechaRegistro, likes, fotosJson,
+      id, idUsuario, idMascota, tipo, titulo, descripcion, fechaRegistro, likes, fotosJson,
       estado, fechaResolucion, latitude, longitude, datosJson, pendienteSync,
       eliminadoLocal, creadoLocal, actualizadoEn
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       id,
       publicacion.idUsuario,
       normalizeOptionalId(publicacion.idMascota),
       publicacion.tipo,
+      obtenerTituloPublicacion(publicacion),
       publicacion.descripcion,
       publicacion.fechaRegistro,
       publicacion.likes ?? 0,

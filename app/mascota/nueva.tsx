@@ -1,8 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import * as ImagePicker from "expo-image-picker";
-import { useState } from "react";
+import { get, ref } from "firebase/database";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,21 +16,29 @@ import {
   TextInput,
   View,
 } from "react-native";
+import SimpleDatePicker from "../../components/SimpleDatePicker";
 import OfflineBanner from "../../components/OfflineBanner";
+import { db } from "../../config/firebase";
 import { ThemeColors, useTheme } from "../../context/ThemeContext";
 import { registrarCambioPendiente } from "../../database/cambiosPendientes";
 import { recalcularYGuardarEstadisticas } from "../../database/estadisticasLocal";
 import { nuevoIdLocal } from "../../database/localDb";
-import { guardarMascotaLocal } from "../../database/mascotasLocal";
+import { guardarMascotaLocal, obtenerMascotaLocal } from "../../database/mascotasLocal";
 import { useNetworkStatus } from "../../hooks/useNetworkStatus";
+import { useShake } from "../../hooks/useShake";
 import { Mascota } from "../../models/firebaseModels";
 import { subirImagen } from "../../services/cloudinaryService";
-import { crearMascotaEnFirebase } from "../../services/firebasePersonalService";
+import { actualizarMascotaEnFirebase, crearMascotaEnFirebase } from "../../services/firebasePersonalService";
 
 const MAX_FOTOS = 5;
 
+const resolverFoto = async (uri: string) => (
+  uri.startsWith("http://") || uri.startsWith("https://") ? uri : subirImagen(uri)
+);
+
 // Formulario para crear mascota; en offline guarda SQLite y encola sincronizacion.
 export default function NuevaMascota() {
+  const { id } = useLocalSearchParams<{ id?: string }>();
   const router = useRouter();
   const { colors } = useTheme();
   const styles = makeStyles(colors);
@@ -39,20 +48,55 @@ export default function NuevaMascota() {
   const [tipoAnimal, setTipoAnimal] = useState("");
   const [raza, setRaza] = useState("");
   const [sexo, setSexo] = useState<"macho" | "hembra">("macho");
-  const [edad, setEdad] = useState("");
   const [peso, setPeso] = useState("");
   const [esterilizado, setEsterilizado] = useState(false);
   const [fechaNacimiento, setFechaNacimiento] = useState("");
   const [comportamiento, setComportamiento] = useState("");
   const [rasgosParticulares, setRasgosParticulares] = useState("");
   const [fotosLocales, setFotosLocales] = useState<string[]>([]);
+  const [fechaRegistroOriginal, setFechaRegistroOriginal] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState("");
+  const isEditing = Boolean(id);
+
+  useShake(() => {
+    setNombre("");
+    setTipoAnimal("");
+    setRaza("");
+    setPeso("");
+    setFechaNacimiento("");
+    setComportamiento("");
+    setRasgosParticulares("");
+  });
+
+  useEffect(() => {
+    if (!id) return;
+    const cargarDatos = (data: Mascota) => {
+      setNombre(data.nombre ?? "");
+      setTipoAnimal(data.tipoAnimal ?? "");
+      setRaza(data.raza ?? "");
+      setSexo(data.sexo ?? "macho");
+      setPeso(data.peso ? String(data.peso) : "");
+      setEsterilizado(Boolean(data.esterilizado));
+      setFechaNacimiento(data.fechaNacimiento ?? "");
+      setFechaRegistroOriginal(data.fechaRegistro ?? "");
+      setComportamiento(data.comportamiento ?? "");
+      setRasgosParticulares(data.rasgosParticulares ?? "");
+      setFotosLocales(Object.values(data.fotos ?? {}));
+    };
+
+    const local = obtenerMascotaLocal(id);
+    if (local) cargarDatos(local);
+    if (isConnected === false) return;
+    get(ref(db, `mascotas/${id}`))
+      .then((snap) => { if (snap.exists()) cargarDatos(snap.val() as Mascota); })
+      .catch(() => {});
+  }, [id, isConnected]);
 
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permiso requerido", "Necesitamos acceso a tu galería.");
+      Alert.alert("Permiso requerido", "Necesitamos acceso a tu galerÃ­a.");
       return;
     }
     const remaining = MAX_FOTOS - fotosLocales.length;
@@ -77,29 +121,24 @@ export default function NuevaMascota() {
 
   const guardar = async () => {
     // Bifurca el guardado segun conectividad: Firebase+SQLite u operacion local pendiente.
-    if (!nombre.trim() || !tipoAnimal.trim() || !raza.trim() || !edad || !peso) {
-      Alert.alert("Error", "Nombre, tipo, raza, edad y peso son obligatorios.");
+    if (!nombre.trim() || !tipoAnimal.trim() || !raza.trim() || !peso) {
+      Alert.alert("Error", "Nombre, tipo, raza, fecha de nacimiento y peso son obligatorios.");
       return;
     }
-    const edadNum = parseInt(edad);
     const pesoNum = parseFloat(peso);
-    if (isNaN(edadNum) || edadNum < 0) {
-      Alert.alert("Error", "La edad debe ser un número válido.");
-      return;
-    }
     if (isNaN(pesoNum) || pesoNum <= 0) {
-      Alert.alert("Error", "El peso debe ser un número mayor a 0.");
+      Alert.alert("Error", "El peso debe ser un nÃºmero mayor a 0.");
       return;
     }
     setIsLoading(true);
     try {
       const userId = await AsyncStorage.getItem("userId");
-      if (!userId) { Alert.alert("Error", "No hay sesión activa."); return; }
+      if (!userId) { Alert.alert("Error", "No hay sesiÃ³n activa."); return; }
 
-      // ── Offline: guardar en SQLite con URIs locales, registrar cambio pendiente ──
+      // â”€â”€ Offline: guardar en SQLite con URIs locales, registrar cambio pendiente â”€â”€
       if (isConnected === false) {
-        // Las fotos quedan como URIs locales (file://...) — subirFotosLocales
-        // las convertirá a URLs de Cloudinary al sincronizar.
+        // Las fotos quedan como URIs locales (file://...) â€” subirFotosLocales
+        // las convertirÃ¡ a URLs de Cloudinary al sincronizar.
         const fotosLocalesRecord: Record<string, string> = {};
         for (let i = 0; i < fotosLocales.length; i++) {
           fotosLocalesRecord[`foto_${Date.now()}_${i}`] = fotosLocales[i];
@@ -111,34 +150,36 @@ export default function NuevaMascota() {
           tipoAnimal: tipoAnimal.trim(),
           raza: raza.trim(),
           sexo,
-          edad: edadNum,
           peso: pesoNum,
           esterilizado,
           fechaNacimiento: fechaNacimiento.trim(),
-          fechaRegistro: new Date().toISOString(),
+          fechaRegistro: fechaRegistroOriginal || new Date().toISOString(),
           comportamiento: comportamiento.trim(),
           rasgosParticulares: rasgosParticulares.trim(),
           enfermedades: {},
           vacunas: {},
           fotos: fotosLocalesRecord,
         };
-        const idLocal = nuevoIdLocal();
-        guardarMascotaLocal(idLocal, nueva, { pendienteSync: true, creadoLocal: true });
-        registrarCambioPendiente(userId, "mascota", idLocal, "crear", nueva);
+        const idLocal = id ?? nuevoIdLocal();
+        guardarMascotaLocal(idLocal, nueva, {
+          pendienteSync: true,
+          creadoLocal: !isEditing || idLocal.startsWith("local_"),
+        });
+        registrarCambioPendiente(userId, "mascota", idLocal, isEditing ? "actualizar" : "crear", nueva);
         recalcularYGuardarEstadisticas(userId);
         Alert.alert(
           "Mascota guardada localmente",
-          "Se sincronizará cuando vuelva la conexión.",
+          "Se sincronizarÃ¡ cuando vuelva la conexiÃ³n.",
           [{ text: "OK", onPress: () => router.back() }],
         );
         return;
       }
 
-      // ── Online: subir fotos a Cloudinary, push a Firebase, cachear en SQLite ──
+      // â”€â”€ Online: subir fotos a Cloudinary, push a Firebase, cachear en SQLite â”€â”€
       const fotosRecord: Record<string, string> = {};
       for (let i = 0; i < fotosLocales.length; i++) {
         setLoadingStatus(`Subiendo foto ${i + 1} de ${fotosLocales.length}...`);
-        const url = await subirImagen(fotosLocales[i]);
+        const url = await resolverFoto(fotosLocales[i]);
         fotosRecord[`foto_${Date.now()}_${i}`] = url;
       }
 
@@ -149,21 +190,21 @@ export default function NuevaMascota() {
         tipoAnimal: tipoAnimal.trim(),
         raza: raza.trim(),
         sexo,
-        edad: edadNum,
         peso: pesoNum,
         esterilizado,
         fechaNacimiento: fechaNacimiento.trim(),
-        fechaRegistro: new Date().toISOString(),
+        fechaRegistro: fechaRegistroOriginal || new Date().toISOString(),
         comportamiento: comportamiento.trim(),
         rasgosParticulares: rasgosParticulares.trim(),
         enfermedades: {},
         vacunas: {},
         fotos: fotosRecord,
       };
-      const idFirebase = await crearMascotaEnFirebase(nueva);
+      const idFirebase = isEditing && id ? id : await crearMascotaEnFirebase(nueva);
+      if (isEditing && id) await actualizarMascotaEnFirebase(id, nueva);
       guardarMascotaLocal(idFirebase, nueva);
       recalcularYGuardarEstadisticas(userId);
-      Alert.alert("¡Listo!", "Mascota registrada correctamente.", [
+      Alert.alert("¡Listo!", isEditing ? "Mascota actualizada correctamente." : "Mascota registrada correctamente.", [
         { text: "OK", onPress: () => router.back() },
       ]);
     } catch (e: any) {
@@ -178,7 +219,7 @@ export default function NuevaMascota() {
     <ScrollView style={styles.bg} contentContainerStyle={styles.content}>
       <Stack.Screen
         options={{
-          title: "Nueva Mascota",
+          title: isEditing ? "Editar Mascota" : "Nueva Mascota",
           headerShown: true,
           headerTintColor: colors.accent,
           headerStyle: { backgroundColor: colors.surface },
@@ -188,9 +229,9 @@ export default function NuevaMascota() {
 
       {isConnected === false && <OfflineBanner />}
 
-      {/* Información básica */}
+      {/* InformaciÃ³n bÃ¡sica */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Información básica</Text>
+        <Text style={styles.cardTitle}>InformaciÃ³n bÃ¡sica</Text>
 
         <Text style={styles.label}>Nombre *</Text>
         <View style={styles.inputRow}>
@@ -225,31 +266,17 @@ export default function NuevaMascota() {
           ))}
         </View>
 
-        <Text style={styles.label}>Edad (años) *</Text>
-        <View style={styles.inputRow}>
-          <Ionicons name="time-outline" size={18} color={colors.textSecondary} style={styles.inputIcon} />
-          <TextInput style={styles.input} placeholder="Ej. 3" placeholderTextColor={colors.textSecondary} value={edad} onChangeText={setEdad} keyboardType="numeric" />
-        </View>
-
         <Text style={styles.label}>Peso (kg) *</Text>
         <View style={styles.inputRow}>
           <Ionicons name="barbell-outline" size={18} color={colors.textSecondary} style={styles.inputIcon} />
           <TextInput style={styles.input} placeholder="Ej. 12.5" placeholderTextColor={colors.textSecondary} value={peso} onChangeText={setPeso} keyboardType="decimal-pad" />
         </View>
 
-        <Text style={styles.label}>Fecha de nacimiento (AAAA-MM-DD)</Text>
-        <View style={styles.inputRow}>
-          <Ionicons name="calendar-outline" size={18} color={colors.textSecondary} style={styles.inputIcon} />
-          <TextInput
-            style={styles.input}
-            placeholder="Ej. 2020-05-15"
-            placeholderTextColor={colors.textSecondary}
-            value={fechaNacimiento}
-            onChangeText={setFechaNacimiento}
-            keyboardType="numeric"
-            maxLength={10}
-          />
-        </View>
+        <SimpleDatePicker
+          label="Fecha de nacimiento"
+          value={fechaNacimiento}
+          onChange={setFechaNacimiento}
+        />
 
         <View style={styles.switchRow}>
           <Text style={styles.label}>Esterilizado</Text>

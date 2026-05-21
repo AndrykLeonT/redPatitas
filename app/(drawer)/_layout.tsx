@@ -39,7 +39,13 @@ function CustomDrawerContent(props: any) {
   };
 
   const handleLoginRedirect = async () => {
-    await AsyncStorage.removeItem("userRole");
+    await AsyncStorage.multiRemove([
+      "userRole",
+      "userName",
+      "userAvatar",
+      "userEmail",
+      "userId",
+    ]);
     onSessionChange();
     goToLogin();
   };

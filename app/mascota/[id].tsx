@@ -38,6 +38,7 @@ import {
   eliminarMascotaEnFirebase,
 } from "../../services/firebasePersonalService";
 import { cacheMascotaDesdeFirebase } from "../../services/syncService";
+import { formatearEdad } from "../../utils/dateUtils";
 import { crearNombreArchivo, guardarReporteTxt, compartirReporteTxt } from "../../utils/reportFiles";
 import { generarReporteMascota } from "../../utils/reportTemplates";
 
@@ -53,7 +54,7 @@ function Fila({
   styles: ReturnType<typeof makeStyles>;
 }) {
   const texto =
-    typeof valor === "boolean" ? (valor ? "Sí" : "No") : String(valor ?? "-");
+    typeof valor === "boolean" ? (valor ? "SÃ­" : "No") : String(valor ?? "-");
   return (
     <View style={styles.fila}>
       <Text style={styles.filaLabel}>{label}</Text>
@@ -105,14 +106,14 @@ export default function MascotaDetalle() {
         return;
       }
 
-      // Sin conexión: SQLite directo
+      // Sin conexiÃ³n: SQLite directo
       if (isConnected === false) {
         if (!cargarDesdeLocal()) setError(true);
         setIsLoading(false);
         return;
       }
 
-      // Con conexión: Firebase primero, fallback a SQLite
+      // Con conexiÃ³n: Firebase primero, fallback a SQLite
       try {
         const snap = await get(ref(db, `mascotas/${id}`));
         if (snap.exists()) {
@@ -156,7 +157,7 @@ export default function MascotaDetalle() {
       });
       Alert.alert(
         "Reporte generado",
-        "El archivo TXT se guardó en Reportes generados.",
+        "El archivo TXT se guardÃ³ en Reportes generados.",
         [
           { text: "OK" },
           {
@@ -180,7 +181,7 @@ export default function MascotaDetalle() {
     if (tipo === "eliminar") {
       Alert.alert(
         "Eliminar registro",
-        `¿Confirmas eliminar el registro de ${mascota?.nombre}? Esta acción no se puede deshacer.`,
+        `Â¿Confirmas eliminar el registro de ${mascota?.nombre}? Esta acciÃ³n no se puede deshacer.`,
         [
           { text: "Cancelar", style: "cancel" },
           {
@@ -190,8 +191,8 @@ export default function MascotaDetalle() {
               setDeleting(true);
               try {
                 if (offline) {
-                  // Soft delete + cambio pendiente. Si era ID local, también lo
-                  // tachamos: el sync lo borrará físicamente sin tocar Firebase.
+                  // Soft delete + cambio pendiente. Si era ID local, tambiÃ©n lo
+                  // tachamos: el sync lo borrarÃ¡ fÃ­sicamente sin tocar Firebase.
                   marcarMascotaEliminadaLocal(id);
                   registrarCambioPendiente(userId!, "mascota", id, "eliminar", {});
                   if (mascota?.idUsuario) recalcularYGuardarEstadisticas(mascota.idUsuario);
@@ -213,8 +214,8 @@ export default function MascotaDetalle() {
     }
 
     Alert.alert(
-      tipo === "adoptado_app" ? "Adopción por la app" : "Adopción externa",
-      `¿Confirmas que ${mascota?.nombre} fue adoptado?`,
+      tipo === "adoptado_app" ? "AdopciÃ³n por la app" : "AdopciÃ³n externa",
+      `Â¿Confirmas que ${mascota?.nombre} fue adoptado?`,
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -233,7 +234,7 @@ export default function MascotaDetalle() {
               };
 
               if (offline) {
-                // 1. Crear adopción local con ID temporal
+                // 1. Crear adopciÃ³n local con ID temporal
                 const idAdopcionLocal = nuevoIdLocal();
                 guardarAdopcionLocal(idAdopcionLocal, adopcionPayload, {
                   pendienteSync: true,
@@ -258,7 +259,7 @@ export default function MascotaDetalle() {
               recalcularYGuardarEstadisticas(mascota.idUsuario);
               router.back();
             } catch {
-              Alert.alert("Error", "No se pudo registrar la adopción.");
+              Alert.alert("Error", "No se pudo registrar la adopciÃ³n.");
               setDeleting(false);
             }
           },
@@ -270,7 +271,7 @@ export default function MascotaDetalle() {
   if (isLoading) {
     return (
       <View style={styles.centrado}>
-        <Stack.Screen options={{ title: "Cargando…", headerShown: true, headerTintColor: colors.accent, headerStyle: { backgroundColor: colors.surface } }} />
+        <Stack.Screen options={{ title: "Cargandoâ€¦", headerShown: true, headerTintColor: colors.accent, headerStyle: { backgroundColor: colors.surface } }} />
         <ActivityIndicator size="large" color={colors.accent} />
       </View>
     );
@@ -281,7 +282,7 @@ export default function MascotaDetalle() {
       <View style={styles.centrado}>
         <Stack.Screen options={{ title: "Mascota", headerShown: true, headerTintColor: colors.accent, headerStyle: { backgroundColor: colors.surface } }} />
         <Ionicons name="alert-circle-outline" size={56} color={colors.danger} />
-        <Text style={styles.errorText}>No se encontró la mascota.</Text>
+        <Text style={styles.errorText}>No se encontrÃ³ la mascota.</Text>
       </View>
     );
   }
@@ -290,6 +291,7 @@ export default function MascotaDetalle() {
   const enfermedades = mascota.enfermedades ? Object.values(mascota.enfermedades) : [];
   const vacunas = mascota.vacunas ? Object.values(mascota.vacunas) : [];
   const fotos = mascota.fotos ? Object.values(mascota.fotos) : [];
+  const edadTexto = formatearEdad(mascota.fechaNacimiento);
 
   return (
     <ScrollView style={styles.bg} contentContainerStyle={styles.content}>
@@ -302,9 +304,14 @@ export default function MascotaDetalle() {
           headerTitleStyle: { color: colors.text, fontWeight: "bold" },
           ...(esOwner && {
             headerRight: () => (
-              <Pressable onPress={eliminar} style={{ marginRight: 12 }} disabled={deleting}>
-                <Ionicons name="trash-outline" size={22} color={colors.danger} />
-              </Pressable>
+              <View style={styles.headerActions}>
+                <Pressable onPress={() => router.push(`/mascota/nueva?id=${id}` as any)} disabled={deleting}>
+                  <Ionicons name="create-outline" size={22} color={colors.accent} />
+                </Pressable>
+                <Pressable onPress={eliminar} disabled={deleting}>
+                  <Ionicons name="trash-outline" size={22} color={colors.danger} />
+                </Pressable>
+              </View>
             ),
           }),
         }}
@@ -383,7 +390,7 @@ export default function MascotaDetalle() {
       >
         <Pressable style={styles.modalOverlay} onPress={() => setShowBajaModal(false)}>
           <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>¿Qué pasó con {mascota?.nombre}?</Text>
+            <Text style={styles.modalTitle}>Â¿QuÃ© pasÃ³ con {mascota?.nombre}?</Text>
 
             <Pressable style={styles.modalOption} onPress={() => handleBaja("adoptado_app")}>
               <View style={[styles.modalOptionIcon, { backgroundColor: "#DCFCE7" }]}>
@@ -391,7 +398,7 @@ export default function MascotaDetalle() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.modalOptionTitle}>Adoptado por la app</Text>
-                <Text style={styles.modalOptionDesc}>La adopción fue gestionada por RedPatitas</Text>
+                <Text style={styles.modalOptionDesc}>La adopciÃ³n fue gestionada por RedPatitas</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
             </Pressable>
@@ -402,7 +409,7 @@ export default function MascotaDetalle() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.modalOptionTitle}>Adoptado externamente</Text>
-                <Text style={styles.modalOptionDesc}>La familia llegó directo al refugio</Text>
+                <Text style={styles.modalOptionDesc}>La familia llegÃ³ directo al refugio</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
             </Pressable>
@@ -413,7 +420,7 @@ export default function MascotaDetalle() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.modalOptionTitle, { color: "#EF4444" }]}>Eliminar registro</Text>
-                <Text style={styles.modalOptionDesc}>Error, duplicado u otra razón</Text>
+                <Text style={styles.modalOptionDesc}>Error, duplicado u otra razÃ³n</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
             </Pressable>
@@ -427,7 +434,7 @@ export default function MascotaDetalle() {
 
       {isConnected === false && <OfflineBanner />}
 
-      {/* Galería de fotos o banner con ícono */}
+      {/* GalerÃ­a de fotos o banner con Ã­cono */}
       {fotos.length > 0 ? (
         <FlatList
           data={fotos}
@@ -451,15 +458,15 @@ export default function MascotaDetalle() {
       {/* Nombre y especie */}
       <View style={styles.nameBanner}>
         <Text style={styles.nombreGrande}>{mascota.nombre}</Text>
-        <Text style={styles.subtitulo}>{mascota.tipoAnimal} · {mascota.raza}</Text>
+        <Text style={styles.subtitulo}>{mascota.tipoAnimal} Â· {mascota.raza}</Text>
         {pendienteSync && <View style={{ marginTop: 6 }}><PendingSyncBadge /></View>}
       </View>
 
       {/* Datos generales */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Información general</Text>
+        <Text style={styles.cardTitle}>InformaciÃ³n general</Text>
         <Fila styles={styles} label="Sexo" valor={mascota.sexo} />
-        <Fila styles={styles} label="Edad" valor={`${mascota.edad} ${mascota.edad === 1 ? "año" : "años"}`} />
+        <Fila styles={styles} label="Edad" valor={edadTexto} />
         <Fila styles={styles} label="Peso" valor={`${mascota.peso} kg`} />
         <Fila styles={styles} label="Esterilizado" valor={mascota.esterilizado} />
         {mascota.fechaNacimiento ? (
@@ -513,7 +520,7 @@ export default function MascotaDetalle() {
         )}
       </View>
 
-      {/* Eliminar (solo dueño) */}
+      {/* Eliminar (solo dueÃ±o) */}
       {esOwner && (
         <Pressable
           style={styles.btnExportar}
@@ -583,6 +590,7 @@ const makeStyles = (colors: ThemeColors) =>
     filaValor: { fontSize: 14, fontWeight: "600", color: colors.text },
     texto: { fontSize: 14, color: colors.textSecondary, lineHeight: 22 },
     textoVacio: { fontSize: 14, color: colors.textSecondary, fontStyle: "italic" },
+    headerActions: { flexDirection: "row", alignItems: "center", gap: 14, marginRight: 12 },
     chipRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 4 },
     chipText: { fontSize: 14, color: colors.textSecondary },
     btnEliminar: {

@@ -20,6 +20,7 @@ import { listarPublicacionesPorUsuario } from "../../database/publicacionesLocal
 import { useNetworkStatus } from "../../hooks/useNetworkStatus";
 import { Publicacion } from "../../models/firebaseModels";
 import { cachePublicacionDesdeFirebase } from "../../services/syncService";
+import { obtenerTituloPublicacion } from "../../utils/publicacionText";
 
 type PubItem = {
   id: string;
@@ -148,8 +149,11 @@ export default function MisPublicaciones() {
                   </View>
                   {showBadge && <PendingSyncBadge />}
                 </View>
-                <Text style={styles.descripcion} numberOfLines={2}>
-                  {item.data.descripcion || "Sin descripción"}
+                <Text style={styles.titulo} numberOfLines={2}>
+                  {obtenerTituloPublicacion(item.data)}
+                </Text>
+                <Text style={styles.descripcion} numberOfLines={1}>
+                  {item.data.descripcion || "Sin descripcion"}
                 </Text>
                 <Text style={styles.fecha}>
                   {new Date(item.data.fechaRegistro).toLocaleDateString("es-MX")}
@@ -204,6 +208,7 @@ const makeStyles = (colors: ThemeColors) =>
       alignSelf: "flex-start",
     },
     tagText: { color: "#FFF", fontSize: 11, fontWeight: "bold" },
-    descripcion: { fontSize: 14, color: colors.text, fontWeight: "500" },
+    titulo: { fontSize: 14, color: colors.text, fontWeight: "700" },
+    descripcion: { fontSize: 12, color: colors.textSecondary },
     fecha: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
   });

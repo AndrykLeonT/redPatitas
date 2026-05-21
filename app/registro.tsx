@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useRouter } from "expo-router";
-import { get, ref, set } from "firebase/database";
-import { useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { get, ref, set, update } from "firebase/database";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -15,8 +15,10 @@ import {
   TextInput,
   View,
 } from "react-native";
+import SimpleDatePicker from "../components/SimpleDatePicker";
 import { db } from "../config/firebase";
 import { ThemeColors, useTheme } from "../context/ThemeContext";
+import { guardarUsuarioLocal, obtenerUsuarioLocal } from "../database/usuariosLocal";
 import { useShake } from "../hooks/useShake";
 import { Usuario } from "../models/firebaseModels";
 import { prepararDatosOffline } from "../services/syncService";
@@ -24,6 +26,7 @@ import { AVATARES } from "../utils/avatars";
 
 // Pantalla de registro: crea el usuario remoto y deja una copia local inicial.
 export default function RegistroScreen() {
+  const { edit } = useLocalSearchParams<{ edit?: string }>();
   const router = useRouter();
   const { colors, isDarkMode } = useTheme();
   const styles = makeStyles(colors, isDarkMode);
@@ -37,6 +40,40 @@ export default function RegistroScreen() {
   const [rol, setRol] = useState<"Dueño" | "Refugio">("Dueño");
   const [fotoPerfil, setFotoPerfil] = useState("perro_perfil.jpg");
   const [isLoading, setIsLoading] = useState(false);
+  const isEditing = edit === "1";
+
+  useEffect(() => {
+    if (!isEditing) return;
+    (async () => {
+      const userId = await AsyncStorage.getItem("userId");
+      if (!userId) return;
+      const local = obtenerUsuarioLocal(userId);
+      if (local) {
+        setNombre(local.nombreCompleto);
+        setUsername(local.nombreUsuario);
+        setEmail(local.correo);
+        setTelefono(local.celular);
+        setFechaNacimiento(local.fechaNacimiento);
+        setRol(local.rol);
+        setFotoPerfil(local.fotoPerfil || "perro_perfil.jpg");
+      }
+      try {
+        const snap = await get(ref(db, `usuarios/${userId}`));
+        if (snap.exists()) {
+          const usuario = snap.val() as Usuario;
+          setNombre(usuario.nombreCompleto);
+          setUsername(usuario.nombreUsuario);
+          setEmail(usuario.correo);
+          setTelefono(usuario.celular);
+          setFechaNacimiento(usuario.fechaNacimiento);
+          setRol(usuario.rol);
+          setFotoPerfil(usuario.fotoPerfil || "perro_perfil.jpg");
+        }
+      } catch {
+        // Se conserva el respaldo local.
+      }
+    })();
+  }, [isEditing]);
 
   useShake(() => {
     setNombre("");
@@ -46,21 +83,19 @@ export default function RegistroScreen() {
     setFechaNacimiento("");
     setPassword("");
     setConfirmPassword("");
-    setRol("Dueño");
-    setFotoPerfil("perro_perfil.jpg");
   });
 
   const registrarUsuario = async () => {
     // Valida el formulario antes de escribir en Firebase y SQLite.
-    if (!nombre || !username || !email || !password || !telefono || !fechaNacimiento) {
+    if (!nombre || !username || !email || (!isEditing && !password) || !telefono || !fechaNacimiento) {
       Alert.alert("Error", "Por favor completa todos los campos requeridos.");
       return;
     }
-    if (password !== confirmPassword) {
+    if (!isEditing && password !== confirmPassword) {
       Alert.alert("Error", "Las contraseñas no coinciden.");
       return;
     }
-    if (password.length < 6) {
+    if (!isEditing && password.length < 6) {
       Alert.alert("Error", "La contraseña debe tener al menos 6 caracteres.");
       return;
     }
@@ -75,6 +110,39 @@ export default function RegistroScreen() {
     try {
       const emailNormalizado = email.trim().toLowerCase();
       const usernameNormalizado = username.trim().toLowerCase();
+
+      if (isEditing) {
+        const userId = await AsyncStorage.getItem("userId");
+        if (!userId) { Alert.alert("Error", "No hay sesión activa."); return; }
+        const actual = obtenerUsuarioLocal(userId);
+        const cambios: Partial<Usuario> = {
+          nombreCompleto: nombre.trim(),
+          nombreUsuario: username.trim(),
+          celular: telefono.trim(),
+          correo: emailNormalizado,
+          fotoPerfil,
+          rol,
+          fechaNacimiento: fechaNacimiento.trim(),
+        };
+        await update(ref(db, `usuarios/${userId}`), cambios);
+        guardarUsuarioLocal(userId, {
+          idAuth: actual?.idAuth ?? userId,
+          contraseña: actual?.contraseña,
+          fechaRegistro: actual?.fechaRegistro ?? new Date().toISOString(),
+          metricas: actual?.metricas ?? { numMascotas: 0, numPublicaciones: 0 },
+          ...cambios,
+        } as Usuario);
+        await AsyncStorage.multiSet([
+          ["userRole", rol],
+          ["userName", nombre.trim()],
+          ["userAvatar", fotoPerfil],
+          ["userEmail", emailNormalizado],
+        ]);
+        Alert.alert("Listo", "Tu perfil fue actualizado.", [
+          { text: "OK", onPress: () => router.back() },
+        ]);
+        return;
+      }
 
       const snapshot = await get(ref(db, "usuarios"));
       if (snapshot.exists()) {
@@ -151,8 +219,10 @@ export default function RegistroScreen() {
             <Ionicons name="arrow-back" size={24} color={colors.accent} />
           </Pressable>
 
-          <Text style={styles.title}>Únete a la Manada</Text>
-          <Text style={styles.subtitle}>Crea tu cuenta en RedPatitas</Text>
+          <Text style={styles.title}>{isEditing ? "Editar perfil" : "Únete a la Manada"}</Text>
+          <Text style={styles.subtitle}>
+            {isEditing ? "Actualiza tus datos de RedPatitas" : "Crea tu cuenta en RedPatitas"}
+          </Text>
 
           <Text style={styles.labelRol}>Elige tu foto de perfil</Text>
           <ScrollView
@@ -179,6 +249,8 @@ export default function RegistroScreen() {
               ))}
           </ScrollView>
 
+          {!isEditing && (
+            <>
           <View style={styles.inputContainer}>
             <Ionicons name="person-outline" size={20} color={colors.textSecondary} style={styles.icon} />
             <TextInput
@@ -201,6 +273,8 @@ export default function RegistroScreen() {
               autoCapitalize="none"
             />
           </View>
+            </>
+          )}
 
           <View style={styles.inputContainer}>
             <Ionicons name="mail-outline" size={20} color={colors.textSecondary} style={styles.icon} />
@@ -227,18 +301,11 @@ export default function RegistroScreen() {
             />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Ionicons name="calendar-outline" size={20} color={colors.textSecondary} style={styles.icon} />
-            <TextInput
-              placeholder="Fecha de nacimiento (AAAA-MM-DD)"
-              placeholderTextColor={colors.textSecondary}
-              style={styles.input}
-              value={fechaNacimiento}
-              onChangeText={setFechaNacimiento}
-              keyboardType="numeric"
-              maxLength={10}
-            />
-          </View>
+          <SimpleDatePicker
+            label="Fecha de nacimiento"
+            value={fechaNacimiento}
+            onChange={setFechaNacimiento}
+          />
 
           <Text style={styles.labelRol}>¿Cómo usarás la app?</Text>
           <View style={styles.rolContainer}>
@@ -292,7 +359,7 @@ export default function RegistroScreen() {
             {isLoading ? (
               <ActivityIndicator color={"#FFF"} />
             ) : (
-              <Text style={styles.btnText}>CREAR CUENTA</Text>
+              <Text style={styles.btnText}>{isEditing ? "GUARDAR CAMBIOS" : "CREAR CUENTA"}</Text>
             )}
           </Pressable>
         </View>

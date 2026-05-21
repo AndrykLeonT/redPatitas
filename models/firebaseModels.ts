@@ -23,7 +23,6 @@ export interface Mascota {
   raza: string;
   comportamiento: string;
   rasgosParticulares: string;
-  edad: number;
   peso: number;
   fechaNacimiento: string;
   fechaRegistro: string;
@@ -46,12 +45,13 @@ export interface Publicacion {
   idUsuario: string;
   idMascota?: string;
   tipo: 'reporte' | 'perdidos' | 'recreacion';
+  titulo: string;
   descripcion: string;
   fechaRegistro: string;
   likes: number;
   fotos: Record<string, string>;
   estado: string;
-  fechaResolucion?: string;
+  fechaResolucion?: string | null;
   ubicacion?: {
     latitude: number;
     longitude: number;

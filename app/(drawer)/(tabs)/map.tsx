@@ -7,12 +7,12 @@ import OfflineBanner from "../../../components/OfflineBanner";
 import { db } from "../../../config/firebase";
 import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 import { useNetworkStatus } from "../../../hooks/useNetworkStatus";
-import { Mascota, Publicacion } from "../../../models/firebaseModels";
+import { Publicacion } from "../../../models/firebaseModels";
+import { obtenerTituloPublicacion } from "../../../utils/publicacionText";
 
 type PuntoMapa = {
   id: string;
   pub: Publicacion;
-  mascota: Mascota | null;
 };
 
 const TIPO_COLOR: Record<string, string> = {
@@ -57,11 +57,7 @@ export default function Mapa() {
       return;
     }
     try {
-      const [pubSnap, mascSnap] = await Promise.all([
-        get(ref(db, "publicaciones")),
-        get(ref(db, "mascotas")),
-      ]);
-      const mascotasMap: Record<string, Mascota> = mascSnap.exists() ? mascSnap.val() : {};
+      const pubSnap = await get(ref(db, "publicaciones"));
       const pubsRaw: Record<string, Publicacion> = pubSnap.exists() ? pubSnap.val() : {};
 
       const items: PuntoMapa[] = Object.entries(pubsRaw)
@@ -69,7 +65,6 @@ export default function Mapa() {
         .map(([id, pub]) => ({
           id,
           pub,
-          mascota: pub.idMascota ? (mascotasMap[pub.idMascota] ?? null) : null,
         }));
 
       setPuntos(items);
@@ -115,12 +110,12 @@ export default function Mapa() {
         }}
         showsUserLocation
       >
-        {puntos.map(({ id, pub, mascota }) => (
+        {puntos.map(({ id, pub }) => (
           <Marker
             key={id}
             coordinate={{ latitude: pub.ubicacion!.latitude, longitude: pub.ubicacion!.longitude }}
-            title={mascota?.nombre ?? "Mascota"}
-            description={`${mascota?.raza ?? ""} · ${pub.tipo}`}
+            title={obtenerTituloPublicacion(pub)}
+            description={pub.tipo}
             pinColor={TIPO_COLOR[pub.tipo] ?? "red"}
           />
         ))}

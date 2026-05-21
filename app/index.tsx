@@ -136,6 +136,7 @@ export default function LoginScreen() {
 
   const continuarInvitado = async () => {
     try {
+      await AsyncStorage.multiRemove(["userName", "userAvatar", "userEmail", "userId"]);
       await AsyncStorage.setItem("userRole", "guest");
       router.replace("/(drawer)/(tabs)");
     } catch (e) {

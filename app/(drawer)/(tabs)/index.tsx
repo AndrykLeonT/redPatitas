@@ -16,7 +16,8 @@ import OfflineBanner from "../../../components/OfflineBanner";
 import { db } from "../../../config/firebase";
 import { ThemeColors, useTheme } from "../../../context/ThemeContext";
 import { useNetworkStatus } from "../../../hooks/useNetworkStatus";
-import { Mascota, Publicacion } from "../../../models/firebaseModels";
+import { Publicacion } from "../../../models/firebaseModels";
+import { obtenerTituloPublicacion } from "../../../utils/publicacionText";
 
 // Calcula distancia Haversine entre dos coordenadas para ordenar publicaciones cercanas.
 export const calcularDistancia = (
@@ -48,8 +49,23 @@ const TIPO_COLOR: Record<string, string> = {
 type FeedItem = {
   id: string;
   pub: Publicacion;
-  mascota: Mascota | null;
 };
+
+type FiltroEstado = "todas" | "resueltas" | "sin_resolver";
+type FiltroTipo = "todos" | Publicacion["tipo"];
+
+const FILTROS_ESTADO: { key: FiltroEstado; label: string }[] = [
+  { key: "todas", label: "Todas" },
+  { key: "sin_resolver", label: "Sin resolver" },
+  { key: "resueltas", label: "Resueltas" },
+];
+
+const FILTROS_TIPO: { key: FiltroTipo; label: string }[] = [
+  { key: "todos", label: "Todos" },
+  { key: "recreacion", label: "Recreacion" },
+  { key: "perdidos", label: "Perdido" },
+  { key: "reporte", label: "Reporte" },
+];
 
 const FALLBACK_LOCATION = {
   coords: {
@@ -67,6 +83,8 @@ export default function HomeScreen() {
   const styles = makeStyles(colors);
   const { isConnected } = useNetworkStatus();
   const [feed, setFeed] = useState<FeedItem[]>([]);
+  const [filtroEstado, setFiltroEstado] = useState<FiltroEstado>("todas");
+  const [filtroTipo, setFiltroTipo] = useState<FiltroTipo>("todos");
   const [isLoading, setIsLoading] = useState(true);
   const [location, setLocation] = useState<Location.LocationObject | null>(null);
 
@@ -90,19 +108,13 @@ export default function HomeScreen() {
       return;
     }
     try {
-      const [pubSnap, mascSnap] = await Promise.all([
-        get(ref(db, "publicaciones")),
-        get(ref(db, "mascotas")),
-      ]);
-
-      const mascotasMap: Record<string, Mascota> = mascSnap.exists() ? mascSnap.val() : {};
+      const pubSnap = await get(ref(db, "publicaciones"));
       const pubsRaw: Record<string, Publicacion> = pubSnap.exists() ? pubSnap.val() : {};
 
       const items: FeedItem[] = Object.entries(pubsRaw)
         .map(([id, pub]) => ({
           id,
           pub,
-          mascota: pub.idMascota ? (mascotasMap[pub.idMascota] ?? null) : null,
         }))
         .sort((a, b) =>
           new Date(b.pub.fechaRegistro).getTime() -
@@ -119,9 +131,21 @@ export default function HomeScreen() {
 
   useFocusEffect(useCallback(() => { cargarFeed(); }, [cargarFeed]));
 
+  const feedFiltrado = feed.filter(({ pub }) => {
+    const estaResuelta = pub.estado === "resuelto";
+    const coincideEstado =
+      filtroEstado === "todas" ||
+      (filtroEstado === "resueltas" && estaResuelta) ||
+      (filtroEstado === "sin_resolver" && !estaResuelta);
+    const coincideTipo = filtroTipo === "todos" || pub.tipo === filtroTipo;
+
+    return coincideEstado && coincideTipo;
+  });
+
   const renderTarjeta = ({ item }: { item: FeedItem }) => {
-    const { pub, mascota } = item;
+    const { pub } = item;
     const tipo = pub.tipo ?? "reporte";
+    const titulo = obtenerTituloPublicacion(pub);
     const primeraFoto = pub.fotos ? Object.values(pub.fotos)[0] : null;
 
     let distanciaStr = "Sin ubicación";
@@ -149,11 +173,11 @@ export default function HomeScreen() {
 
         <View style={styles.cardBody}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.nombre} numberOfLines={1}>
-              {mascota?.nombre ?? "Mascota sin nombre"}
+            <Text style={styles.nombre} numberOfLines={2}>
+              {titulo}
             </Text>
             <Text style={styles.detalles} numberOfLines={1}>
-              {mascota ? `${mascota.tipoAnimal} · ${mascota.raza}` : "Sin información"} · {distanciaStr}
+              {distanciaStr}
             </Text>
           </View>
           <Pressable
@@ -182,10 +206,51 @@ export default function HomeScreen() {
         <OfflineBanner texto="Las publicaciones globales no están disponibles sin conexión. Puedes seguir consultando tus mascotas y publicaciones personales." />
       )}
       <FlatList
-        data={feed}
+        data={feedFiltrado}
         keyExtractor={(item) => item.id}
         renderItem={renderTarjeta}
         contentContainerStyle={feed.length === 0 ? styles.centradoFlex : styles.container}
+        ListHeaderComponent={
+          feed.length > 0 ? (
+            <View style={styles.filtrosContainer}>
+              <Text style={styles.filtroTitulo}>Estado</Text>
+              <View style={styles.filtroRow}>
+                {FILTROS_ESTADO.map((filtro) => {
+                  const activo = filtroEstado === filtro.key;
+                  return (
+                    <Pressable
+                      key={filtro.key}
+                      style={[styles.filtroBtn, activo && styles.filtroBtnActivo]}
+                      onPress={() => setFiltroEstado(filtro.key)}
+                    >
+                      <Text style={[styles.filtroBtnText, activo && styles.filtroBtnTextActivo]}>
+                        {filtro.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              <Text style={styles.filtroTitulo}>Tipo de publicacion</Text>
+              <View style={styles.filtroRow}>
+                {FILTROS_TIPO.map((filtro) => {
+                  const activo = filtroTipo === filtro.key;
+                  return (
+                    <Pressable
+                      key={filtro.key}
+                      style={[styles.filtroBtn, activo && styles.filtroBtnActivo]}
+                      onPress={() => setFiltroTipo(filtro.key)}
+                    >
+                      <Text style={[styles.filtroBtnText, activo && styles.filtroBtnTextActivo]}>
+                        {filtro.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons
@@ -199,7 +264,9 @@ export default function HomeScreen() {
             <Text style={styles.emptySubtitle}>
               {isConnected === false
                 ? "El feed global requiere internet."
-                : "Aún no hay reportes ni mascotas en adopción."}
+                : feed.length > 0
+                  ? "No hay publicaciones que coincidan con los filtros."
+                  : "Aún no hay reportes ni mascotas en adopción."}
             </Text>
           </View>
         }
@@ -218,6 +285,45 @@ const makeStyles = (colors: ThemeColors) =>
     emptyContainer: { alignItems: "center", paddingTop: 40 },
     emptyTitle: { fontSize: 18, fontWeight: "bold", color: colors.textSecondary, marginTop: 16 },
     emptySubtitle: { fontSize: 14, color: colors.textSecondary, marginTop: 8, textAlign: "center" },
+    filtrosContainer: {
+      backgroundColor: colors.surface,
+      borderRadius: 14,
+      padding: 12,
+      marginBottom: 16,
+      elevation: 2,
+    },
+    filtroTitulo: {
+      fontSize: 13,
+      fontWeight: "bold",
+      color: colors.text,
+      marginBottom: 8,
+    },
+    filtroRow: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 8,
+      marginBottom: 12,
+    },
+    filtroBtn: {
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: 12,
+      paddingHorizontal: 12,
+      paddingVertical: 7,
+      backgroundColor: colors.surfaceAlt,
+    },
+    filtroBtnActivo: {
+      borderColor: colors.accent,
+      backgroundColor: colors.accent,
+    },
+    filtroBtnText: {
+      fontSize: 12,
+      fontWeight: "600",
+      color: colors.textSecondary,
+    },
+    filtroBtnTextActivo: {
+      color: colors.textInverse,
+    },
     card: {
       backgroundColor: colors.surface,
       borderRadius: 20,
@@ -247,7 +353,7 @@ const makeStyles = (colors: ThemeColors) =>
       justifyContent: "space-between",
       alignItems: "center",
     },
-    nombre: { fontSize: 20, fontWeight: "bold", color: colors.text },
+    nombre: { fontSize: 18, fontWeight: "bold", color: colors.text, lineHeight: 22 },
     detalles: { fontSize: 13, color: colors.textSecondary, marginTop: 2 },
     btnVerMas: {
       backgroundColor: colors.accent,

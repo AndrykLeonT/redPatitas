@@ -1,4 +1,6 @@
 import { Mascota, Publicacion, Usuario } from "../models/firebaseModels";
+import { formatearEdad } from "./dateUtils";
+import { obtenerTituloPublicacion } from "./publicacionText";
 
 function listaONinguno(items: string[], vacio: string) {
   return items.length ? items.map((item) => `- ${item}`).join("\n") : vacio;
@@ -39,7 +41,7 @@ Nombre: ${mascota.nombre}
 Tipo de animal: ${mascota.tipoAnimal}
 Raza: ${mascota.raza || "Sin informacion"}
 Sexo: ${mascota.sexo}
-Edad: ${mascota.edad} ano(s)
+Edad: ${formatearEdad(mascota.fechaNacimiento)}
 Peso: ${mascota.peso} kg
 Esterilizado: ${siNo(mascota.esterilizado)}
 
@@ -85,6 +87,7 @@ export function generarReportePublicacion(params: {
   return `REDPATITAS - REPORTE DE PUBLICACION
 
 ID de publicacion: ${id}
+Titulo: ${obtenerTituloPublicacion(publicacion)}
 Tipo: ${publicacion.tipo}
 Estado: ${publicacion.estado || "Sin estado"}
 Likes: ${publicacion.likes ?? 0}
