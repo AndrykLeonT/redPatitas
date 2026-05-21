@@ -1,4 +1,4 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import AsyncStorage from "../utils/asyncStorageWrapper";
 import React, { createContext, useCallback, useContext, useEffect, useState } from "react";
 
 // ─── Paletas ───────────────────────────────────────────────────────────────────

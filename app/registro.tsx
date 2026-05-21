@@ -1,7 +1,7 @@
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import AsyncStorage from "../utils/asyncStorageWrapper";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { get, ref, set, update } from "firebase/database";
+import { get, ref, set, update } from "../utils/firebaseWrapper";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,

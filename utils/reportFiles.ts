@@ -1,5 +1,6 @@
 import * as FileSystem from "expo-file-system/legacy";
 import * as Sharing from "expo-sharing";
+import { auditoriaService } from "../services/auditoriaService";
 
 const REPORTES_DIR = `${FileSystem.documentDirectory}reportes/`;
 
@@ -32,25 +33,30 @@ export async function guardarReporteTxt(fileName: string, contenido: string) {
   await FileSystem.writeAsStringAsync(fileUri, contenido, {
     encoding: FileSystem.EncodingType.UTF8,
   });
+  auditoriaService.registrarAcceso('Archivos', 'INSERCION', `Archivo: ${fileName}`);
   return fileUri;
 }
 
 export async function leerReporteTxt(fileUri: string) {
-  return FileSystem.readAsStringAsync(fileUri, {
+  const contenido = await FileSystem.readAsStringAsync(fileUri, {
     encoding: FileSystem.EncodingType.UTF8,
   });
+  auditoriaService.registrarAcceso('Archivos', 'CONSULTA', `Archivo: ${fileUri.split('/').pop()}`);
+  return contenido;
 }
 
 export async function actualizarReporteTxt(fileUri: string, contenido: string) {
   await FileSystem.writeAsStringAsync(fileUri, contenido, {
     encoding: FileSystem.EncodingType.UTF8,
   });
+  auditoriaService.registrarAcceso('Archivos', 'MODIFICACION', `Archivo: ${fileUri.split('/').pop()}`);
 }
 
 export async function eliminarReporteTxt(fileUri: string) {
   const info = await FileSystem.getInfoAsync(fileUri);
   if (info.exists) {
     await FileSystem.deleteAsync(fileUri);
+    auditoriaService.registrarAcceso('Archivos', 'ELIMINACION', `Archivo: ${fileUri.split('/').pop()}`);
   }
 }
 

@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
-import { get, ref } from "firebase/database";
+import { get, ref } from "../../../utils/firebaseWrapper";
 import { useCallback, useMemo, useState } from "react";
 import {
   ActivityIndicator,

@@ -1,7 +1,55 @@
 import * as SQLite from "expo-sqlite";
 import { CREATE_TABLES_SQL } from "./schema";
 
-export const localDb = SQLite.openDatabaseSync("redpatitas.db");
+import { auditoriaService, TipoOperacion } from "../services/auditoriaService";
+
+const _localDb = SQLite.openDatabaseSync("redpatitas.db");
+
+function parseSqlForAuditoria(sql: string): { operacion: TipoOperacion; tabla: string } {
+  const query = sql.trim().toUpperCase();
+  let operacion: TipoOperacion = 'CONSULTA';
+  if (query.startsWith('INSERT')) operacion = 'INSERCION';
+  else if (query.startsWith('UPDATE')) operacion = 'MODIFICACION';
+  else if (query.startsWith('DELETE')) operacion = 'ELIMINACION';
+  
+  let tabla = 'desconocida';
+  const match = query.match(/(?:FROM|INTO|UPDATE)\s+([a-zA-Z0-9_]+)/i);
+  if (match && match[1]) {
+    tabla = match[1];
+  } else if (query.startsWith('PRAGMA') || query.startsWith('ALTER') || query.startsWith('CREATE')) {
+    operacion = 'MODIFICACION';
+    tabla = 'schema';
+  }
+
+  return { operacion, tabla };
+}
+
+function registrar(sql: string) {
+  const { operacion, tabla } = parseSqlForAuditoria(sql);
+  auditoriaService.registrarAcceso('SQLite', operacion, `Tabla: ${tabla}`);
+}
+
+export const localDb = {
+  execSync: (source: string) => {
+    registrar(source);
+    return _localDb.execSync(source);
+  },
+  runSync: (source: string, ...args: any[]) => {
+    registrar(source);
+    // @ts-ignore
+    return _localDb.runSync(source, ...args);
+  },
+  getAllSync: <T>(source: string, ...args: any[]): T[] => {
+    registrar(source);
+    // @ts-ignore
+    return _localDb.getAllSync<T>(source, ...args);
+  },
+  getFirstSync: <T>(source: string, ...args: any[]): T | null => {
+    registrar(source);
+    // @ts-ignore
+    return _localDb.getFirstSync<T>(source, ...args);
+  }
+};
 
 let initialized = false;
 

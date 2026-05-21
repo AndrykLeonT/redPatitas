@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
-import { equalTo, get, orderByChild, query, ref } from "firebase/database";
+import { equalTo, get, orderByChild, query, ref } from "../../utils/firebaseWrapper";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,

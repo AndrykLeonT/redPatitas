@@ -1,5 +1,5 @@
 import * as Location from "expo-location";
-import { get, ref } from "firebase/database";
+import { get, ref } from "../../../utils/firebaseWrapper";
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker } from "react-native-maps";

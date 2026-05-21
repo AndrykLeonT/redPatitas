@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import AsyncStorage from "../../utils/asyncStorageWrapper";
 import { CommonActions } from "@react-navigation/native";
 import {
   DrawerContentScrollView,
@@ -269,6 +269,26 @@ export default function DrawerLayout() {
             drawerLabel: "Reportes generados",
             drawerIcon: ({ color }) => (
               <Ionicons name="document-text-outline" size={24} color={color} />
+            ),
+          }}
+        />
+        <Drawer.Screen
+          name="bitacora"
+          options={{
+            headerTitle: "Terminal de Auditoría",
+            drawerLabel: "Terminal de Auditoría",
+            drawerIcon: ({ color }) => (
+              <Ionicons name="terminal-outline" size={24} color={color} />
+            ),
+          }}
+        />
+        <Drawer.Screen
+          name="resumenBitacora"
+          options={{
+            headerTitle: "Resumen de Auditoría",
+            drawerLabel: "Resumen de Auditoría",
+            drawerIcon: ({ color }) => (
+              <Ionicons name="albums-outline" size={24} color={color} />
             ),
           }}
         />

@@ -1,6 +1,7 @@
 import { get, push, ref, remove, set, update } from "firebase/database";
 import { db } from "../config/firebase";
 import { Adopcion, Mascota, Publicacion, Usuario } from "../models/firebaseModels";
+import { auditoriaService } from "./auditoriaService";
 
 export type DatosPersonales = {
   usuario: Usuario | null;
@@ -44,6 +45,8 @@ export async function descargarDatosPersonales(userId: string): Promise<DatosPer
     });
   }
 
+  auditoriaService.registrarAcceso('Firebase', 'CONSULTA', `Nodos: usuarios/${userId}, mascotas, publicaciones, adopciones`);
+
   return { usuario, mascotas, publicaciones, adopciones };
 }
 
@@ -52,20 +55,24 @@ export async function descargarDatosPersonales(userId: string): Promise<DatosPer
 export async function crearMascotaEnFirebase(payload: Mascota): Promise<string> {
   const nuevoRef = push(ref(db, "mascotas"));
   await set(nuevoRef, payload);
+  auditoriaService.registrarAcceso('Firebase', 'INSERCION', 'Nodo: mascotas');
   return nuevoRef.key!;
 }
 
 export async function actualizarMascotaEnFirebase(id: string, payload: Partial<Mascota>) {
   await update(ref(db, `mascotas/${id}`), payload);
+  auditoriaService.registrarAcceso('Firebase', 'MODIFICACION', `Nodo: mascotas/${id}`);
 }
 
 export async function eliminarMascotaEnFirebase(id: string) {
   await remove(ref(db, `mascotas/${id}`));
+  auditoriaService.registrarAcceso('Firebase', 'ELIMINACION', `Nodo: mascotas/${id}`);
 }
 
 export async function crearPublicacionEnFirebase(payload: Publicacion): Promise<string> {
   const nuevoRef = push(ref(db, "publicaciones"));
   await set(nuevoRef, payload);
+  auditoriaService.registrarAcceso('Firebase', 'INSERCION', 'Nodo: publicaciones');
   return nuevoRef.key!;
 }
 
@@ -74,10 +81,12 @@ export async function actualizarPublicacionEnFirebase(
   payload: Partial<Publicacion>,
 ) {
   await update(ref(db, `publicaciones/${id}`), payload);
+  auditoriaService.registrarAcceso('Firebase', 'MODIFICACION', `Nodo: publicaciones/${id}`);
 }
 
 export async function eliminarPublicacionEnFirebase(id: string) {
   await remove(ref(db, `publicaciones/${id}`));
+  auditoriaService.registrarAcceso('Firebase', 'ELIMINACION', `Nodo: publicaciones/${id}`);
 }
 
 export async function actualizarUsuarioEnFirebase(
@@ -85,18 +94,22 @@ export async function actualizarUsuarioEnFirebase(
   payload: Partial<Usuario>,
 ) {
   await update(ref(db, `usuarios/${userId}`), payload);
+  auditoriaService.registrarAcceso('Firebase', 'MODIFICACION', `Nodo: usuarios/${userId}`);
 }
 
 export async function crearAdopcionEnFirebase(payload: Adopcion): Promise<string> {
   const nuevoRef = push(ref(db, "adopciones"));
   await set(nuevoRef, payload);
+  auditoriaService.registrarAcceso('Firebase', 'INSERCION', 'Nodo: adopciones');
   return nuevoRef.key!;
 }
 
 export async function actualizarAdopcionEnFirebase(id: string, payload: Partial<Adopcion>) {
   await update(ref(db, `adopciones/${id}`), payload);
+  auditoriaService.registrarAcceso('Firebase', 'MODIFICACION', `Nodo: adopciones/${id}`);
 }
 
 export async function eliminarAdopcionEnFirebase(id: string) {
   await remove(ref(db, `adopciones/${id}`));
+  auditoriaService.registrarAcceso('Firebase', 'ELIMINACION', `Nodo: adopciones/${id}`);
 }
