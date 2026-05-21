@@ -27,7 +27,7 @@ export default function SyncChangesModal({
           <View style={[styles.iconBox, { backgroundColor: colors.accentSoft }]}>
             <Ionicons name="cloud-upload-outline" size={32} color={colors.accent} />
           </View>
-          <Text style={[styles.title, { color: colors.text }]}>Conexión recuperada</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Conexion recuperada</Text>
           <Text style={[styles.body, { color: colors.textSecondary }]}>
             Tienes {pendingCount === 1 ? "1 cambio local pendiente" : `${pendingCount} cambios locales pendientes`}.
             ¿Deseas subirlos a internet?

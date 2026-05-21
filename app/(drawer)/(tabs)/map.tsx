@@ -78,11 +78,11 @@ export default function Mapa() {
   if (isConnected === false) {
     return (
       <View style={styles.offlineContainer}>
-        <OfflineBanner texto="El mapa global requiere conexión para consultar ubicaciones actualizadas." />
+        <OfflineBanner texto="El mapa global requiere conexion para consultar ubicaciones actualizadas." />
         <View style={styles.offlineContent}>
-          <Text style={styles.offlineTitle}>Mapa no disponible sin conexión</Text>
+          <Text style={styles.offlineTitle}>Mapa no disponible sin conexion</Text>
           <Text style={styles.offlineText}>
-            Puedes seguir revisando tus mascotas y publicaciones personales desde el menú.
+            Puedes seguir revisando tus mascotas y publicaciones personales desde el menu.
           </Text>
         </View>
       </View>
@@ -93,7 +93,7 @@ export default function Mapa() {
     return (
       <View style={styles.loader}>
         <ActivityIndicator size="large" color={colors.accent} />
-        <Text style={styles.loaderText}>Obteniendo tu ubicación en el mapa...</Text>
+        <Text style={styles.loaderText}>Obteniendo tu ubicacion en el mapa...</Text>
       </View>
     );
   }

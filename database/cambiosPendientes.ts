@@ -113,7 +113,7 @@ export function limpiarCambiosSincronizados(userId: string) {
 
 /**
  * Cuando se sustituye el ID local por el ID real de Firebase, propagar a los cambios
- * pendientes posteriores que referencian el ID local (ej. una publicación creada offline
+ * pendientes posteriores que referencian el ID local (ej. una publicacion creada offline
  * vinculada a una mascota creada offline).
  */
 export function reemplazarEntidadIdEnCambios(

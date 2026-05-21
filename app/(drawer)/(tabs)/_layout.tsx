@@ -50,7 +50,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="estadisticas"
         options={{
-          title: "Estadísticas",
+          title: "Estadisticas",
           tabBarIcon: ({ color }) => (
             <Ionicons name="stats-chart-outline" size={24} color={color} />
           ),

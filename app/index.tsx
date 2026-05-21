@@ -29,8 +29,8 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState("");
 
-  // ✅ Comprueba si hay sesión guardada — solo redirige si el rol es válido
-  // (no "guest" sin sesión activa, y no un string vacío por bug de escritura)
+  // ✅ Comprueba si hay sesion guardada — solo redirige si el rol es valido
+  // (no "guest" sin sesion activa, y no un string vacio por bug de escritura)
   useEffect(() => {
     const checkSession = async () => {
       try {
@@ -40,7 +40,7 @@ export default function LoginScreen() {
           router.replace("/(drawer)/(tabs)");
         }
       } catch (e) {
-        console.error("Error comprobando sesión", e);
+        console.error("Error comprobando sesion", e);
       } finally {
         setIsChecking(false);
       }
@@ -99,7 +99,7 @@ export default function LoginScreen() {
         return;
       }
 
-      // ✅ Persiste sesión — fotoPerfil se guarda como nombre de archivo,
+      // ✅ Persiste sesion — fotoPerfil se guarda como nombre de archivo,
       // que es exactamente la key que usa AVATARES en avatars.ts
       await AsyncStorage.multiSet([
         ["userRole", usuarioEncontrado.rol],
@@ -110,9 +110,9 @@ export default function LoginScreen() {
       ]);
 
       // Descarga datos personales del usuario y los cachea en SQLite
-      // para que la app funcione cuando se pierda la conexión.
-      // Si falla, no bloquea el login: el usuario podrá entrar y se
-      // intentará refrescar cuando vuelva la conexión.
+      // para que la app funcione cuando se pierda la conexion.
+      // Si falla, no bloquea el login: el usuario podra entrar y se
+      // intentara refrescar cuando vuelva la conexion.
       try {
         setLoadingStatus("Preparando datos locales...");
         await prepararDatosOffline(uidEncontrado);
@@ -123,7 +123,7 @@ export default function LoginScreen() {
       router.replace("/(drawer)/(tabs)");
     } catch (e: any) {
       console.error(e);
-      Alert.alert("Error", "Error al iniciar sesión. Intenta de nuevo.");
+      Alert.alert("Error", "Error al iniciar sesion. Intenta de nuevo.");
     } finally {
       setIsLoading(false);
       setLoadingStatus("");
@@ -140,7 +140,7 @@ export default function LoginScreen() {
       await AsyncStorage.setItem("userRole", "guest");
       router.replace("/(drawer)/(tabs)");
     } catch (e) {
-      console.error("Error al guardar sesión de invitado", e);
+      console.error("Error al guardar sesion de invitado", e);
     }
   };
 

@@ -97,7 +97,7 @@ export default function SimpleDatePicker({
             <View style={styles.row}>
               <Stepper label="Año" value={year} onMinus={() => updateYear(-1)} onPlus={() => updateYear(1)} />
               <Stepper label="Mes" value={month} onMinus={() => updateMonth(-1)} onPlus={() => updateMonth(1)} />
-              <Stepper label="Día" value={day} onMinus={() => updateDay(-1)} onPlus={() => updateDay(1)} />
+              <Stepper label="Dia" value={day} onMinus={() => updateDay(-1)} onPlus={() => updateDay(1)} />
             </View>
 
             <Text style={styles.preview}>{year}-{pad(month)}-{pad(day)}</Text>

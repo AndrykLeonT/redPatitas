@@ -10,7 +10,7 @@ export interface ThemeColors {
   textSecondary: string;     // texto/iconos secundarios
   textInverse: string;       // texto sobre acento (#fff usualmente)
   border: string;            // bordes y separadores
-  accent: string;            // marca / botón principal
+  accent: string;            // marca / boton principal
   accentSoft: string;        // fondo suave del acento
   danger: string;
   shadow: string;

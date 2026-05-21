@@ -37,7 +37,7 @@ export const calcularDistancia = (
 const TIPO_LABEL: Record<string, string> = {
   reporte: "Reporte",
   perdidos: "Perdidos",
-  recreacion: "Recreación",
+  recreacion: "Recreacion",
 };
 
 const TIPO_COLOR: Record<string, string> = {
@@ -148,7 +148,7 @@ export default function HomeScreen() {
     const titulo = obtenerTituloPublicacion(pub);
     const primeraFoto = pub.fotos ? Object.values(pub.fotos)[0] : null;
 
-    let distanciaStr = "Sin ubicación";
+    let distanciaStr = "Sin ubicacion";
     if (location && pub.ubicacion?.latitude && pub.ubicacion?.longitude) {
       const dist = calcularDistancia(
         location.coords.latitude, location.coords.longitude,
@@ -179,12 +179,19 @@ export default function HomeScreen() {
             <Text style={styles.detalles} numberOfLines={1}>
               {distanciaStr}
             </Text>
+            <Pressable
+              style={styles.btnPerfilLink}
+              onPress={() => router.push(`/usuario/${pub.idUsuario}` as any)}
+            >
+              <Ionicons name="person-outline" size={12} color={colors.accent} />
+              <Text style={styles.btnPerfilLinkText}>Ver perfil del autor</Text>
+            </Pressable>
           </View>
           <Pressable
             style={styles.btnVerMas}
             onPress={() => router.push(`/publicacion/${item.id}` as any)}
           >
-            <Text style={styles.btnVerMasText}>Ver más</Text>
+            <Text style={styles.btnVerMasText}>Ver mas</Text>
           </Pressable>
         </View>
       </View>
@@ -203,7 +210,7 @@ export default function HomeScreen() {
   return (
     <View style={styles.bg}>
       {isConnected === false && (
-        <OfflineBanner texto="Las publicaciones globales no están disponibles sin conexión. Puedes seguir consultando tus mascotas y publicaciones personales." />
+        <OfflineBanner texto="Las publicaciones globales no estan disponibles sin conexion. Puedes seguir consultando tus mascotas y publicaciones personales." />
       )}
       <FlatList
         data={feedFiltrado}
@@ -259,14 +266,14 @@ export default function HomeScreen() {
               color={colors.textSecondary}
             />
             <Text style={styles.emptyTitle}>
-              {isConnected === false ? "Sin conexión" : "No hay publicaciones"}
+              {isConnected === false ? "Sin conexion" : "No hay publicaciones"}
             </Text>
             <Text style={styles.emptySubtitle}>
               {isConnected === false
                 ? "El feed global requiere internet."
                 : feed.length > 0
                   ? "No hay publicaciones que coincidan con los filtros."
-                  : "Aún no hay reportes ni mascotas en adopción."}
+                  : "Aun no hay reportes ni mascotas en adopcion."}
             </Text>
           </View>
         }
@@ -363,4 +370,15 @@ const makeStyles = (colors: ThemeColors) =>
       marginLeft: 10,
     },
     btnVerMasText: { color: colors.textInverse, fontWeight: "bold" },
+    btnPerfilLink: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      marginTop: 6,
+    },
+    btnPerfilLinkText: {
+      color: colors.accent,
+      fontSize: 12,
+      fontWeight: "bold",
+    },
   });

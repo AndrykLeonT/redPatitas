@@ -6,7 +6,7 @@ type Props = {
   texto?: string;
 };
 
-const DEFAULT_TEXT = "Sin conexión. Estás viendo información guardada en este dispositivo.";
+const DEFAULT_TEXT = "Sin conexion. Estas viendo informacion guardada en este dispositivo.";
 
 // Aviso compacto para pantallas que leen datos locales por falta de conexion.
 export default function OfflineBanner({ texto = DEFAULT_TEXT }: Props) {

@@ -30,8 +30,8 @@ function CustomDrawerContent(props: any) {
 
   const isGuest = role === "guest" || !role;
 
-  // navigation.getParent() accede al Stack raíz que contiene este Drawer,
-  // evitando conflictos con la animación de cierre del propio DrawerItem.
+  // navigation.getParent() accede al Stack raiz que contiene este Drawer,
+  // evitando conflictos con la animacion de cierre del propio DrawerItem.
   const goToLogin = () => {
     navigation.getParent()?.dispatch(
       CommonActions.reset({ index: 0, routes: [{ name: "index" }] })
@@ -118,7 +118,7 @@ function CustomDrawerContent(props: any) {
       />
 
       <DrawerItem
-        label={isGuest ? "Iniciar sesión" : "Cerrar sesión"}
+        label={isGuest ? "Iniciar sesion" : "Cerrar sesion"}
         labelStyle={{ color: colors.text }}
         icon={({ color }) => (
           <Ionicons

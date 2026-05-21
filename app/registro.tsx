@@ -113,7 +113,7 @@ export default function RegistroScreen() {
 
       if (isEditing) {
         const userId = await AsyncStorage.getItem("userId");
-        if (!userId) { Alert.alert("Error", "No hay sesión activa."); return; }
+        if (!userId) { Alert.alert("Error", "No hay sesion activa."); return; }
         const actual = obtenerUsuarioLocal(userId);
         const cambios: Partial<Usuario> = {
           nombreCompleto: nombre.trim(),
@@ -155,7 +155,7 @@ export default function RegistroScreen() {
         });
 
         if (existeDuplicado) {
-          Alert.alert("Error", "El correo o nombre de usuario ya está registrado.");
+          Alert.alert("Error", "El correo o nombre de usuario ya esta registrado.");
           return;
         }
       }
@@ -189,7 +189,7 @@ export default function RegistroScreen() {
         ["userId", uid],
       ]);
 
-      // Cachea el perfil recién creado en SQLite para soporte offline
+      // Cachea el perfil recien creado en SQLite para soporte offline
       try {
         await prepararDatosOffline(uid);
       } catch (e) {
@@ -199,7 +199,7 @@ export default function RegistroScreen() {
       router.replace("/(drawer)/(tabs)");
     } catch (e: any) {
       console.error(e);
-      Alert.alert("Error al registrar", e.message ?? "Ocurrió un problema, intenta de nuevo.");
+      Alert.alert("Error al registrar", e.message ?? "Ocurrio un problema, intenta de nuevo.");
     } finally {
       setIsLoading(false);
     }
@@ -219,7 +219,7 @@ export default function RegistroScreen() {
             <Ionicons name="arrow-back" size={24} color={colors.accent} />
           </Pressable>
 
-          <Text style={styles.title}>{isEditing ? "Editar perfil" : "Únete a la Manada"}</Text>
+          <Text style={styles.title}>{isEditing ? "Editar perfil" : "Unete a la Manada"}</Text>
           <Text style={styles.subtitle}>
             {isEditing ? "Actualiza tus datos de RedPatitas" : "Crea tu cuenta en RedPatitas"}
           </Text>
@@ -279,7 +279,7 @@ export default function RegistroScreen() {
           <View style={styles.inputContainer}>
             <Ionicons name="mail-outline" size={20} color={colors.textSecondary} style={styles.icon} />
             <TextInput
-              placeholder="Correo electrónico"
+              placeholder="Correo electronico"
               placeholderTextColor={colors.textSecondary}
               style={styles.input}
               keyboardType="email-address"
@@ -292,7 +292,7 @@ export default function RegistroScreen() {
           <View style={styles.inputContainer}>
             <Ionicons name="call-outline" size={20} color={colors.textSecondary} style={styles.icon} />
             <TextInput
-              placeholder="Número de celular"
+              placeholder="Numero de celular"
               placeholderTextColor={colors.textSecondary}
               style={styles.input}
               keyboardType="phone-pad"
@@ -307,7 +307,7 @@ export default function RegistroScreen() {
             onChange={setFechaNacimiento}
           />
 
-          <Text style={styles.labelRol}>¿Cómo usarás la app?</Text>
+          <Text style={styles.labelRol}>¿Como usaras la app?</Text>
           <View style={styles.rolContainer}>
             {["Dueño", "Refugio"].map((opcion) => (
               <Pressable
@@ -330,7 +330,7 @@ export default function RegistroScreen() {
           <View style={styles.inputContainer}>
             <Ionicons name="lock-closed-outline" size={20} color={colors.textSecondary} style={styles.icon} />
             <TextInput
-              placeholder="Contraseña (mínimo 6 caracteres)"
+              placeholder="Contraseña (minimo 6 caracteres)"
               placeholderTextColor={colors.textSecondary}
               style={styles.input}
               secureTextEntry

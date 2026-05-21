@@ -16,6 +16,7 @@ import {
   Text,
   View,
 } from "react-native";
+import { AVATARES } from "../../utils/avatars";
 import OfflineBanner from "../../components/OfflineBanner";
 import PendingSyncBadge from "../../components/PendingSyncBadge";
 import { db } from "../../config/firebase";
@@ -33,7 +34,7 @@ import {
 } from "../../database/publicacionesLocal";
 import { obtenerUsuarioLocal } from "../../database/usuariosLocal";
 import { useNetworkStatus } from "../../hooks/useNetworkStatus";
-import { Mascota, Publicacion } from "../../models/firebaseModels";
+import { Mascota, Publicacion, Usuario } from "../../models/firebaseModels";
 import {
   actualizarPublicacionEnFirebase,
   eliminarPublicacionEnFirebase,
@@ -47,7 +48,7 @@ import { generarReportePublicacion } from "../../utils/reportTemplates";
 const { width, height } = Dimensions.get("window");
 
 const TIPO_LABEL: Record<string, string> = {
-  reporte: "Reporte", perdidos: "Perdidos", recreacion: "Recreación",
+  reporte: "Reporte", perdidos: "Perdidos", recreacion: "Recreacion",
 };
 const TIPO_COLOR: Record<string, string> = {
   reporte: "#EF4444", perdidos: "#F59E0B", recreacion: "#10B981",
@@ -62,6 +63,7 @@ export default function PublicacionDetalle() {
   const { isConnected } = useNetworkStatus();
   const [publicacion, setPublicacion] = useState<Publicacion | null>(null);
   const [mascota, setMascota] = useState<Mascota | null>(null);
+  const [autor, setAutor] = useState<Usuario | null>(null);
   const [pendienteSync, setPendienteSync] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -99,7 +101,7 @@ export default function PublicacionDetalle() {
       try {
         cachePublicacionDesdeFirebase(idPublicacion, data);
       } catch (error) {
-        console.warn("No se pudo cachear publicación personal", error);
+        console.warn("No se pudo cachear publicacion personal", error);
       }
     };
 
@@ -130,6 +132,27 @@ export default function PublicacionDetalle() {
       }
     };
 
+    const cargarAutor = async (idAutor: string) => {
+      if (!idAutor || esIdLocal(idAutor)) return;
+      
+      const localAuth = obtenerUsuarioLocal(idAutor);
+      if (isConnected === false && localAuth) {
+        setAutor(localAuth);
+        return;
+      }
+      
+      try {
+        const authSnap = await get(ref(db, `usuarios/${idAutor}`));
+        if (authSnap.exists()) {
+          setAutor(authSnap.val() as Usuario);
+        } else if (localAuth) {
+          setAutor(localAuth);
+        }
+      } catch (err) {
+        if (localAuth) setAutor(localAuth);
+      }
+    };
+
     const cargarDesdeLocal = async (): Promise<boolean> => {
       // Fallback para publicaciones locales pendientes o cuando no hay conectividad.
       const local = obtenerPublicacionLocal(id);
@@ -138,6 +161,7 @@ export default function PublicacionDetalle() {
         setPublicacion(data as Publicacion);
         setPendienteSync(Boolean(ps || creadoLocal));
         await cargarMascotaVinculada(data.idMascota ?? "", data.idUsuario);
+        await cargarAutor(data.idUsuario);
         return true;
       }
       return false;
@@ -174,6 +198,7 @@ export default function PublicacionDetalle() {
         cachearPublicacionSiEsPersonal(id, pub, currentUserId);
 
         await cargarMascotaVinculada(pub.idMascota ?? "", currentUserId);
+        await cargarAutor(pub.idUsuario);
       } catch {
         if (!(await cargarDesdeLocal())) setError(true);
       } finally {
@@ -196,8 +221,8 @@ export default function PublicacionDetalle() {
     Alert.alert(
       estaResuelta ? "Marcar como sin resolver" : "Marcar como resuelta",
       estaResuelta
-        ? "¿Confirmas que esta publicación volverá a aparecer como sin resolver?"
-        : "¿Confirmas que esta publicación ya fue resuelta?",
+        ? "¿Confirmas que esta publicacion volvera a aparecer como sin resolver?"
+        : "¿Confirmas que esta publicacion ya fue resuelta?",
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -228,7 +253,7 @@ export default function PublicacionDetalle() {
               }
               setPublicacion(actualizada);
             } catch {
-              Alert.alert("Error", "No se pudo actualizar la publicación.");
+              Alert.alert("Error", "No se pudo actualizar la publicacion.");
             } finally {
               setResolving(false);
             }
@@ -245,8 +270,8 @@ export default function PublicacionDetalle() {
     }
 
     Alert.alert(
-      "Eliminar publicación",
-      "¿Seguro que deseas eliminar esta publicación? Esta acción no se puede deshacer.",
+      "Eliminar publicacion",
+      "¿Seguro que deseas eliminar esta publicacion? Esta accion no se puede deshacer.",
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -266,7 +291,7 @@ export default function PublicacionDetalle() {
               }
               router.back();
             } catch {
-              Alert.alert("Error", "No se pudo eliminar la publicación.");
+              Alert.alert("Error", "No se pudo eliminar la publicacion.");
               setDeleting(false);
             }
           },
@@ -311,7 +336,7 @@ export default function PublicacionDetalle() {
       });
       Alert.alert(
         "Reporte generado",
-        "El archivo TXT se guardó en Reportes generados.",
+        "El archivo TXT se guardo en Reportes generados.",
         [
           { text: "OK" },
           {
@@ -339,9 +364,9 @@ export default function PublicacionDetalle() {
   if (error || !publicacion) {
     return (
       <View style={styles.centrado}>
-        <Stack.Screen options={{ title: "Publicación", headerShown: true, headerTintColor: colors.accent, headerStyle: { backgroundColor: colors.surface } }} />
+        <Stack.Screen options={{ title: "Publicacion", headerShown: true, headerTintColor: colors.accent, headerStyle: { backgroundColor: colors.surface } }} />
         <Ionicons name="alert-circle-outline" size={56} color={colors.danger} />
-        <Text style={styles.errorText}>No se encontró la publicación.</Text>
+        <Text style={styles.errorText}>No se encontro la publicacion.</Text>
       </View>
     );
   }
@@ -444,7 +469,7 @@ export default function PublicacionDetalle() {
         </View>
       </Modal>
 
-      {/* Galería de fotos */}
+      {/* Galeria de fotos */}
       {fotos.length > 0 ? (
         <FlatList
           data={fotos}
@@ -505,18 +530,18 @@ export default function PublicacionDetalle() {
         </View>
       ) : null}
 
-      {/* Descripción */}
+      {/* Descripcion */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Descripción</Text>
+        <Text style={styles.cardTitle}>Descripcion</Text>
         <Text style={styles.descripcion}>
-          {publicacion.descripcion || "Sin descripción."}
+          {publicacion.descripcion || "Sin descripcion."}
         </Text>
       </View>
 
-      {/* Ubicación */}
+      {/* Ubicacion */}
       {publicacion.ubicacion?.latitude && publicacion.ubicacion?.longitude ? (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Ubicación aproximada</Text>
+          <Text style={styles.cardTitle}>Ubicacion aproximada</Text>
           <View style={styles.ubicacionRow}>
             <Ionicons name="location-outline" size={18} color={colors.textSecondary} />
             <Text style={styles.ubicacionText}>
@@ -527,6 +552,34 @@ export default function PublicacionDetalle() {
       ) : null}
 
       {/* Resolver o reabrir: solo creador */}
+      {/* Seccion del Autor */}
+      <View style={styles.cardAutor}>
+        <Text style={styles.cardAutorTitulo}>Publicado por</Text>
+        <View style={styles.cardAutorRow}>
+          <Image
+            source={
+              autor?.fotoPerfil && AVATARES[autor.fotoPerfil]
+                ? AVATARES[autor.fotoPerfil]
+                : AVATARES["default"]
+            }
+            style={styles.autorAvatar}
+          />
+          <View style={styles.autorInfo}>
+            <Text style={styles.autorNombre}>
+              {autor?.nombreCompleto || autor?.nombreUsuario || "Usuario Desconocido"}
+            </Text>
+            <Text style={styles.autorRol}>{autor?.rol ?? "Dueño"}</Text>
+          </View>
+        </View>
+        <Pressable
+          style={styles.btnVerPerfil}
+          onPress={() => router.push(`/usuario/${publicacion.idUsuario}` as any)}
+        >
+          <Ionicons name="person-outline" size={16} color={colors.accent} />
+          <Text style={styles.btnVerPerfilText}>Ver perfil</Text>
+        </Pressable>
+      </View>
+
       {esOwner && (
         <Pressable
           style={[
@@ -570,7 +623,7 @@ export default function PublicacionDetalle() {
           disabled={deleting}
         >
           <Ionicons name="trash-outline" size={18} color={colors.danger} />
-          <Text style={styles.btnEliminarText}>Eliminar publicación</Text>
+          <Text style={styles.btnEliminarText}>Eliminar publicacion</Text>
         </Pressable>
       )}
     </ScrollView>
@@ -596,6 +649,32 @@ const makeStyles = (colors: ThemeColors) =>
       elevation: 2,
       gap: 6,
     },
+    cardAutor: {
+      backgroundColor: colors.surface,
+      padding: 16,
+      marginVertical: 12,
+      marginHorizontal: 16,
+      borderRadius: 14,
+      elevation: 2,
+    },
+    cardAutorTitulo: { fontSize: 14, color: colors.textSecondary, marginBottom: 10, fontWeight: "600" },
+    cardAutorRow: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
+    autorAvatar: { width: 44, height: 44, borderRadius: 22, marginRight: 12, backgroundColor: colors.surfaceAlt },
+    autorInfo: { flex: 1 },
+    autorNombre: { fontSize: 16, fontWeight: "bold", color: colors.text },
+    autorRol: { fontSize: 12, color: colors.textSecondary, marginTop: 2 },
+    btnVerPerfil: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      backgroundColor: colors.background,
+      paddingVertical: 10,
+      borderRadius: 10,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    btnVerPerfilText: { color: colors.accent, fontWeight: "bold", fontSize: 14 },
     tag: {
       alignSelf: "flex-start",
       borderRadius: 20,

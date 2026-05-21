@@ -54,7 +54,7 @@ function Fila({
   styles: ReturnType<typeof makeStyles>;
 }) {
   const texto =
-    typeof valor === "boolean" ? (valor ? "SÃ­" : "No") : String(valor ?? "-");
+    typeof valor === "boolean" ? (valor ? "Si" : "No") : String(valor ?? "-");
   return (
     <View style={styles.fila}>
       <Text style={styles.filaLabel}>{label}</Text>
@@ -106,21 +106,24 @@ export default function MascotaDetalle() {
         return;
       }
 
-      // Sin conexiÃ³n: SQLite directo
+      // Sin conexion: SQLite directo
       if (isConnected === false) {
         if (!cargarDesdeLocal()) setError(true);
         setIsLoading(false);
         return;
       }
 
-      // Con conexiÃ³n: Firebase primero, fallback a SQLite
+      // Con conexion: Firebase primero, fallback a SQLite
       try {
         const snap = await get(ref(db, `mascotas/${id}`));
         if (snap.exists()) {
           const m = snap.val() as Mascota;
           setMascota(m);
           setPendienteSync(false);
-          cacheMascotaDesdeFirebase(id, m);
+          const currentUserId = await AsyncStorage.getItem("userId");
+          if (currentUserId && m.idUsuario === currentUserId) {
+            cacheMascotaDesdeFirebase(id, m);
+          }
         } else if (!cargarDesdeLocal()) {
           setError(true);
         }
@@ -157,7 +160,7 @@ export default function MascotaDetalle() {
       });
       Alert.alert(
         "Reporte generado",
-        "El archivo TXT se guardÃ³ en Reportes generados.",
+        "El archivo TXT se guardo en Reportes generados.",
         [
           { text: "OK" },
           {
@@ -181,7 +184,7 @@ export default function MascotaDetalle() {
     if (tipo === "eliminar") {
       Alert.alert(
         "Eliminar registro",
-        `Â¿Confirmas eliminar el registro de ${mascota?.nombre}? Esta acciÃ³n no se puede deshacer.`,
+        `Confirmas eliminar el registro de ${mascota?.nombre}? Esta accion no se puede deshacer.`,
         [
           { text: "Cancelar", style: "cancel" },
           {
@@ -191,8 +194,8 @@ export default function MascotaDetalle() {
               setDeleting(true);
               try {
                 if (offline) {
-                  // Soft delete + cambio pendiente. Si era ID local, tambiÃ©n lo
-                  // tachamos: el sync lo borrarÃ¡ fÃ­sicamente sin tocar Firebase.
+                  // Soft delete + cambio pendiente. Si era ID local, tambien lo
+                  // tachamos: el sync lo borrara fisicamente sin tocar Firebase.
                   marcarMascotaEliminadaLocal(id);
                   registrarCambioPendiente(userId!, "mascota", id, "eliminar", {});
                   if (mascota?.idUsuario) recalcularYGuardarEstadisticas(mascota.idUsuario);
@@ -214,8 +217,8 @@ export default function MascotaDetalle() {
     }
 
     Alert.alert(
-      tipo === "adoptado_app" ? "AdopciÃ³n por la app" : "AdopciÃ³n externa",
-      `Â¿Confirmas que ${mascota?.nombre} fue adoptado?`,
+      tipo === "adoptado_app" ? "Adopcion por la app" : "Adopcion externa",
+      `Confirmas que ${mascota?.nombre} fue adoptado?`,
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -234,7 +237,7 @@ export default function MascotaDetalle() {
               };
 
               if (offline) {
-                // 1. Crear adopciÃ³n local con ID temporal
+                // 1. Crear adopcion local con ID temporal
                 const idAdopcionLocal = nuevoIdLocal();
                 guardarAdopcionLocal(idAdopcionLocal, adopcionPayload, {
                   pendienteSync: true,
@@ -259,7 +262,7 @@ export default function MascotaDetalle() {
               recalcularYGuardarEstadisticas(mascota.idUsuario);
               router.back();
             } catch {
-              Alert.alert("Error", "No se pudo registrar la adopciÃ³n.");
+              Alert.alert("Error", "No se pudo registrar la adopcion.");
               setDeleting(false);
             }
           },
@@ -282,7 +285,7 @@ export default function MascotaDetalle() {
       <View style={styles.centrado}>
         <Stack.Screen options={{ title: "Mascota", headerShown: true, headerTintColor: colors.accent, headerStyle: { backgroundColor: colors.surface } }} />
         <Ionicons name="alert-circle-outline" size={56} color={colors.danger} />
-        <Text style={styles.errorText}>No se encontrÃ³ la mascota.</Text>
+        <Text style={styles.errorText}>No se encontro la mascota.</Text>
       </View>
     );
   }
@@ -390,7 +393,7 @@ export default function MascotaDetalle() {
       >
         <Pressable style={styles.modalOverlay} onPress={() => setShowBajaModal(false)}>
           <View style={styles.modalSheet}>
-            <Text style={styles.modalTitle}>Â¿QuÃ© pasÃ³ con {mascota?.nombre}?</Text>
+            <Text style={styles.modalTitle}>Que paso con {mascota?.nombre}?</Text>
 
             <Pressable style={styles.modalOption} onPress={() => handleBaja("adoptado_app")}>
               <View style={[styles.modalOptionIcon, { backgroundColor: "#DCFCE7" }]}>
@@ -398,7 +401,7 @@ export default function MascotaDetalle() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.modalOptionTitle}>Adoptado por la app</Text>
-                <Text style={styles.modalOptionDesc}>La adopciÃ³n fue gestionada por RedPatitas</Text>
+                <Text style={styles.modalOptionDesc}>La adopcion fue gestionada por RedPatitas</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
             </Pressable>
@@ -409,7 +412,7 @@ export default function MascotaDetalle() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.modalOptionTitle}>Adoptado externamente</Text>
-                <Text style={styles.modalOptionDesc}>La familia llegÃ³ directo al refugio</Text>
+                <Text style={styles.modalOptionDesc}>La familia llego directo al refugio</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
             </Pressable>
@@ -420,7 +423,7 @@ export default function MascotaDetalle() {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.modalOptionTitle, { color: "#EF4444" }]}>Eliminar registro</Text>
-                <Text style={styles.modalOptionDesc}>Error, duplicado u otra razÃ³n</Text>
+                <Text style={styles.modalOptionDesc}>Error, duplicado u otra razon</Text>
               </View>
               <Ionicons name="chevron-forward" size={18} color="#9CA3AF" />
             </Pressable>
@@ -434,7 +437,7 @@ export default function MascotaDetalle() {
 
       {isConnected === false && <OfflineBanner />}
 
-      {/* GalerÃ­a de fotos o banner con Ã­cono */}
+      {/* Galeria de fotos o banner con icono */}
       {fotos.length > 0 ? (
         <FlatList
           data={fotos}
@@ -458,13 +461,13 @@ export default function MascotaDetalle() {
       {/* Nombre y especie */}
       <View style={styles.nameBanner}>
         <Text style={styles.nombreGrande}>{mascota.nombre}</Text>
-        <Text style={styles.subtitulo}>{mascota.tipoAnimal} Â· {mascota.raza}</Text>
+        <Text style={styles.subtitulo}>{mascota.tipoAnimal} - {mascota.raza}</Text>
         {pendienteSync && <View style={{ marginTop: 6 }}><PendingSyncBadge /></View>}
       </View>
 
       {/* Datos generales */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>InformaciÃ³n general</Text>
+        <Text style={styles.cardTitle}>Informacion general</Text>
         <Fila styles={styles} label="Sexo" valor={mascota.sexo} />
         <Fila styles={styles} label="Edad" valor={edadTexto} />
         <Fila styles={styles} label="Peso" valor={`${mascota.peso} kg`} />
@@ -520,7 +523,7 @@ export default function MascotaDetalle() {
         )}
       </View>
 
-      {/* Eliminar (solo dueÃ±o) */}
+      {/* Eliminar (solo dueno) */}
       {esOwner && (
         <Pressable
           style={styles.btnExportar}

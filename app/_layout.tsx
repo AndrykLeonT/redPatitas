@@ -14,7 +14,7 @@ import { Image, StyleSheet, View } from "react-native";
 import { ThemeProvider, useTheme } from "../context/ThemeContext";
 import { initLocalDb } from "../database/localDb";
 
-// Inicializa SQLite una sola vez al cargar el módulo (antes del primer render).
+// Inicializa SQLite una sola vez al cargar el modulo (antes del primer render).
 initLocalDb();
 
 // Stack raiz: aplica tema global, registra rutas principales y muestra el splash.
@@ -51,19 +51,23 @@ function RootNavigation() {
           <Stack.Screen name="(drawer)" />
           <Stack.Screen
             name="mascota/[id]"
-            options={{ headerShown: true, headerBackTitle: "Atrás", headerTintColor: "#FF8C42", headerStyle: { backgroundColor: "#FFF" } }}
+            options={{ headerShown: true, headerBackTitle: "Atras", headerTintColor: "#FF8C42" }}
           />
           <Stack.Screen
             name="mascota/nueva"
-            options={{ headerShown: true, headerBackTitle: "Atrás", headerTintColor: "#FF8C42", headerStyle: { backgroundColor: "#FFF" } }}
+            options={{ headerShown: true, headerBackTitle: "Atras", headerTintColor: "#FF8C42" }}
           />
           <Stack.Screen
             name="publicacion/[id]"
-            options={{ headerShown: true, headerBackTitle: "Atrás", headerTintColor: "#FF8C42", headerStyle: { backgroundColor: "#FFF" } }}
+            options={{ headerShown: true, headerBackTitle: "Atras", headerTintColor: "#FF8C42" }}
           />
           <Stack.Screen
             name="publicacion/nueva"
-            options={{ headerShown: true, headerBackTitle: "Atrás", headerTintColor: "#FF8C42", headerStyle: { backgroundColor: "#FFF" } }}
+            options={{ headerShown: true, headerBackTitle: "Atras", headerTintColor: "#FF8C42" }}
+          />
+          <Stack.Screen
+            name="usuario/[id]"
+            options={{ headerShown: true, headerBackTitle: "Atras", headerTintColor: "#FF8C42" }}
           />
         </Stack>
         <StatusBar style={isDarkMode ? "light" : "dark"} />

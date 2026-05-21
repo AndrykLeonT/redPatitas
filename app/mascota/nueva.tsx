@@ -96,7 +96,7 @@ export default function NuevaMascota() {
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permiso requerido", "Necesitamos acceso a tu galerÃ­a.");
+      Alert.alert("Permiso requerido", "Necesitamos acceso a tu galeria.");
       return;
     }
     const remaining = MAX_FOTOS - fotosLocales.length;
@@ -127,18 +127,18 @@ export default function NuevaMascota() {
     }
     const pesoNum = parseFloat(peso);
     if (isNaN(pesoNum) || pesoNum <= 0) {
-      Alert.alert("Error", "El peso debe ser un nÃºmero mayor a 0.");
+      Alert.alert("Error", "El peso debe ser un numero mayor a 0.");
       return;
     }
     setIsLoading(true);
     try {
       const userId = await AsyncStorage.getItem("userId");
-      if (!userId) { Alert.alert("Error", "No hay sesiÃ³n activa."); return; }
+      if (!userId) { Alert.alert("Error", "No hay sesion activa."); return; }
 
       // â”€â”€ Offline: guardar en SQLite con URIs locales, registrar cambio pendiente â”€â”€
       if (isConnected === false) {
         // Las fotos quedan como URIs locales (file://...) â€” subirFotosLocales
-        // las convertirÃ¡ a URLs de Cloudinary al sincronizar.
+        // las convertira a URLs de Cloudinary al sincronizar.
         const fotosLocalesRecord: Record<string, string> = {};
         for (let i = 0; i < fotosLocales.length; i++) {
           fotosLocalesRecord[`foto_${Date.now()}_${i}`] = fotosLocales[i];
@@ -169,7 +169,7 @@ export default function NuevaMascota() {
         recalcularYGuardarEstadisticas(userId);
         Alert.alert(
           "Mascota guardada localmente",
-          "Se sincronizarÃ¡ cuando vuelva la conexiÃ³n.",
+          "Se sincronizara cuando vuelva la conexion.",
           [{ text: "OK", onPress: () => router.back() }],
         );
         return;
@@ -229,9 +229,9 @@ export default function NuevaMascota() {
 
       {isConnected === false && <OfflineBanner />}
 
-      {/* InformaciÃ³n bÃ¡sica */}
+      {/* Informacion basica */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>InformaciÃ³n bÃ¡sica</Text>
+        <Text style={styles.cardTitle}>Informacion basica</Text>
 
         <Text style={styles.label}>Nombre *</Text>
         <View style={styles.inputRow}>

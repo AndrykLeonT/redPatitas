@@ -44,7 +44,7 @@ const resolverFoto = async (uri: string) => (
 const TIPOS = [
   { key: "reporte" as const, label: "Reporte", color: "#EF4444" },
   { key: "perdidos" as const, label: "Perdidos", color: "#F59E0B" },
-  { key: "recreacion" as const, label: "RecreaciÃ³n", color: "#10B981" },
+  { key: "recreacion" as const, label: "Recreacion", color: "#10B981" },
 ];
 
 const FALLBACK_REGION = {
@@ -156,13 +156,13 @@ export default function NuevaPublicacion() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("Permiso requerido", "Necesitamos acceso a tu ubicaciÃ³n.");
+        Alert.alert("Permiso requerido", "Necesitamos acceso a tu ubicacion.");
         return;
       }
       const loc = await Location.getCurrentPositionAsync({});
       setUbicacion({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
     } catch {
-      Alert.alert("Error", "No se pudo obtener tu ubicaciÃ³n.");
+      Alert.alert("Error", "No se pudo obtener tu ubicacion.");
     }
   };
 
@@ -179,7 +179,7 @@ export default function NuevaPublicacion() {
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permiso requerido", "Necesitamos acceso a tu galerÃ­a.");
+      Alert.alert("Permiso requerido", "Necesitamos acceso a tu galeria.");
       return;
     }
     const remaining = MAX_FOTOS - fotosLocales.length;
@@ -209,13 +209,13 @@ export default function NuevaPublicacion() {
       return;
     }
     if (!descripcion.trim()) {
-      Alert.alert("Error", "La descripciÃ³n es obligatoria.");
+      Alert.alert("Error", "La descripcion es obligatoria.");
       return;
     }
     setIsLoading(true);
     try {
       const userId = await AsyncStorage.getItem("userId");
-      if (!userId) { Alert.alert("Error", "No hay sesiÃ³n activa."); return; }
+      if (!userId) { Alert.alert("Error", "No hay sesion activa."); return; }
 
       if (isConnected === false) {
         const fotosRecord: Record<string, string> = {};
@@ -243,8 +243,8 @@ export default function NuevaPublicacion() {
         registrarCambioPendiente(userId, "publicacion", idLocal, isEditing ? "actualizar" : "crear", nueva);
         recalcularYGuardarEstadisticas(userId);
         Alert.alert(
-          "PublicaciÃ³n guardada localmente",
-          "Se sincronizarÃ¡ cuando vuelva la conexiÃ³n.",
+          "Publicacion guardada localmente",
+          "Se sincronizara cuando vuelva la conexion.",
           [{ text: "OK", onPress: () => router.back() }],
         );
         return;
@@ -257,7 +257,7 @@ export default function NuevaPublicacion() {
         fotosRecord[`foto_${Date.now()}_${i}`] = url;
       }
 
-      setLoadingStatus("Guardando publicaciÃ³n...");
+      setLoadingStatus("Guardando publicacion...");
       const nueva: Publicacion = {
         idUsuario: userId,
         ...(idMascota ? { idMascota } : {}),
@@ -274,11 +274,11 @@ export default function NuevaPublicacion() {
       if (isEditing && id) await actualizarPublicacionEnFirebase(id, nueva);
       guardarPublicacionLocal(idFirebase, nueva);
       recalcularYGuardarEstadisticas(userId);
-      Alert.alert("¡Publicado!", isEditing ? "Tu publicación fue actualizada correctamente." : "Tu publicación fue creada correctamente.", [
+      Alert.alert("¡Publicado!", isEditing ? "Tu publicacion fue actualizada correctamente." : "Tu publicacion fue creada correctamente.", [
         { text: "OK", onPress: () => router.back() },
       ]);
     } catch (e: any) {
-      Alert.alert("Error", e.message ?? "No se pudo crear la publicaciÃ³n.");
+      Alert.alert("Error", e.message ?? "No se pudo crear la publicacion.");
     } finally {
       setIsLoading(false);
       setLoadingStatus("");
@@ -290,7 +290,7 @@ export default function NuevaPublicacion() {
       <ScrollView style={styles.bg} contentContainerStyle={styles.content}>
         <Stack.Screen
           options={{
-            title: isEditing ? "Editar Publicación" : "Nueva Publicación",
+            title: isEditing ? "Editar Publicacion" : "Nueva Publicacion",
             headerShown: true,
             headerTintColor: colors.accent,
             headerStyle: { backgroundColor: colors.surface },
@@ -302,7 +302,7 @@ export default function NuevaPublicacion() {
 
         {/* Tipo */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>Tipo de publicaciÃ³n</Text>
+          <Text style={styles.cardTitle}>Tipo de publicacion</Text>
           <View style={styles.tipoRow}>
             {TIPOS.map(({ key, label, color }) => (
               <Pressable
@@ -329,12 +329,12 @@ export default function NuevaPublicacion() {
           />
         </View>
 
-        {/* DescripciÃ³n */}
+        {/* Descripcion */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>DescripciÃ³n *</Text>
+          <Text style={styles.cardTitle}>Descripcion *</Text>
           <TextInput
             style={styles.textArea}
-            placeholder="Describe la situaciÃ³n: dÃ³nde fue visto, cuÃ¡ndo, caracterÃ­sticas..."
+            placeholder="Describe la situacion: donde fue visto, cuando, caracteristicas..."
             placeholderTextColor={colors.textSecondary}
             value={descripcion}
             onChangeText={setDescripcion}
@@ -395,13 +395,13 @@ export default function NuevaPublicacion() {
           )}
         </View>
 
-        {/* UbicaciÃ³n */}
+        {/* Ubicacion */}
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>UbicaciÃ³n</Text>
+          <Text style={styles.cardTitle}>Ubicacion</Text>
           <View style={styles.ubicacionBtns}>
             <Pressable style={styles.ubicacionBtn} onPress={usarUbicacionActual}>
               <Ionicons name="locate-outline" size={18} color={colors.accent} />
-              <Text style={styles.ubicacionBtnText}>UbicaciÃ³n actual</Text>
+              <Text style={styles.ubicacionBtnText}>Ubicacion actual</Text>
             </Pressable>
             <Pressable style={styles.ubicacionBtn} onPress={abrirMapaPicker}>
               <Ionicons name="map-outline" size={18} color={colors.accent} />
@@ -419,7 +419,7 @@ export default function NuevaPublicacion() {
               </Pressable>
             </View>
           ) : (
-            <Text style={[styles.textoVacio, { marginTop: 8 }]}>Sin ubicaciÃ³n seleccionada.</Text>
+            <Text style={[styles.textoVacio, { marginTop: 8 }]}>Sin ubicacion seleccionada.</Text>
           )}
         </View>
 
@@ -460,7 +460,7 @@ export default function NuevaPublicacion() {
             <Text style={styles.mapHint}>
               {tempMarker
                 ? "Arrastra el marcador para ajustar"
-                : "Toca el mapa para seleccionar una ubicaciÃ³n"}
+                : "Toca el mapa para seleccionar una ubicacion"}
             </Text>
             <View style={styles.mapBtns}>
               <Pressable style={styles.mapBtnCancelar} onPress={() => setShowMapPicker(false)}>
@@ -471,7 +471,7 @@ export default function NuevaPublicacion() {
                 onPress={confirmarUbicacion}
                 disabled={!tempMarker}
               >
-                <Text style={styles.mapBtnConfirmarText}>Confirmar ubicaciÃ³n</Text>
+                <Text style={styles.mapBtnConfirmarText}>Confirmar ubicacion</Text>
               </Pressable>
             </View>
           </View>

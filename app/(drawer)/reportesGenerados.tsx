@@ -88,7 +88,7 @@ export default function ReportesGenerados() {
   const confirmarEliminar = (reporte: ReporteGenerado) => {
     Alert.alert(
       "Eliminar reporte",
-      "Se eliminará el archivo TXT local. Los datos originales no se modificarán.",
+      "Se eliminara el archivo TXT local. Los datos originales no se modificaran.",
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -167,7 +167,7 @@ export default function ReportesGenerados() {
             <Ionicons name="document-text-outline" size={58} color={colors.textSecondary} />
             <Text style={styles.emptyTitle}>Sin reportes generados</Text>
             <Text style={styles.emptyText}>
-              Exporta una mascota o publicación para verla aquí.
+              Exporta una mascota o publicacion para verla aqui.
             </Text>
           </View>
         }

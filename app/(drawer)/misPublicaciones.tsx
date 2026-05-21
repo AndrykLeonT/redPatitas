@@ -30,7 +30,7 @@ type PubItem = {
 };
 
 const TIPO_LABEL: Record<string, string> = {
-  reporte: "Reporte", perdidos: "Perdidos", recreacion: "Recreación",
+  reporte: "Reporte", perdidos: "Perdidos", recreacion: "Recreacion",
 };
 const TIPO_COLOR: Record<string, string> = {
   reporte: "#EF4444", perdidos: "#F59E0B", recreacion: "#10B981",
@@ -64,13 +64,13 @@ export default function MisPublicaciones() {
         setPublicaciones(locales);
       };
 
-      // Sin conexión: solo SQLite
+      // Sin conexion: solo SQLite
       if (isConnected === false) {
         cargarDesdeLocal();
         return;
       }
 
-      // Con conexión: Firebase primero, fallback a SQLite si falla
+      // Con conexion: Firebase primero, fallback a SQLite si falla
       try {
         const snap = await get(ref(db, "publicaciones"));
         const arr: PubItem[] = [];
@@ -88,7 +88,7 @@ export default function MisPublicaciones() {
         );
         setPublicaciones(arr);
       } catch (firebaseErr) {
-        console.warn("Firebase falló al cargar publicaciones, fallback a SQLite", firebaseErr);
+        console.warn("Firebase fallo al cargar publicaciones, fallback a SQLite", firebaseErr);
         cargarDesdeLocal();
       }
     } catch (e) {
@@ -113,7 +113,7 @@ export default function MisPublicaciones() {
       {isConnected === false && <OfflineBanner />}
       <Pressable style={styles.btnNueva} onPress={() => router.push("/publicacion/nueva" as any)}>
         <Ionicons name="add-circle-outline" size={20} color={colors.textInverse} />
-        <Text style={styles.btnNuevaText}>Nueva Publicación</Text>
+        <Text style={styles.btnNuevaText}>Nueva Publicacion</Text>
       </Pressable>
 
       <FlatList
@@ -124,7 +124,7 @@ export default function MisPublicaciones() {
           <View style={styles.emptyContainer}>
             <Ionicons name="newspaper-outline" size={56} color={colors.textSecondary} />
             <Text style={styles.emptyTitle}>Sin publicaciones</Text>
-            <Text style={styles.emptySubtitle}>Aún no tienes publicaciones.</Text>
+            <Text style={styles.emptySubtitle}>Aun no tienes publicaciones.</Text>
           </View>
         }
         renderItem={({ item }) => {

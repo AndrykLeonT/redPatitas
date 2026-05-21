@@ -146,7 +146,7 @@ export function reemplazarIdMascotaLocal(idAntiguo: string, idNuevo: string) {
      WHERE id = ?`,
     [idNuevo, ahora, idAntiguo],
   );
-  // Si alguna publicación apuntaba a este idMascota local, actualizarla
+  // Si alguna publicacion apuntaba a este idMascota local, actualizarla
   localDb.runSync(
     `UPDATE publicaciones_local SET idMascota = ? WHERE idMascota = ?`,
     [idNuevo, idAntiguo],

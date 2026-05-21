@@ -56,13 +56,13 @@ export default function MisMascotas() {
         setMascotas(locales);
       };
 
-      // Sin conexiÃ³n: solo SQLite
+      // Sin conexion: solo SQLite
       if (isConnected === false) {
         cargarDesdeLocal();
         return;
       }
 
-      // Con conexiÃ³n: Firebase primero, fallback a SQLite si falla
+      // Con conexion: Firebase primero, fallback a SQLite si falla
       try {
         const snap = await get(ref(db, "mascotas"));
         const arr: MascotaItem[] = [];
@@ -77,7 +77,7 @@ export default function MisMascotas() {
         }
         setMascotas(arr);
       } catch (firebaseErr) {
-        console.warn("Firebase fallÃ³ al cargar mascotas, fallback a SQLite", firebaseErr);
+        console.warn("Firebase fallo al cargar mascotas, fallback a SQLite", firebaseErr);
         cargarDesdeLocal();
       }
     } catch (e) {
@@ -113,7 +113,7 @@ export default function MisMascotas() {
           <View style={styles.emptyContainer}>
             <Ionicons name="paw-outline" size={56} color={colors.textSecondary} />
             <Text style={styles.emptyTitle}>Sin mascotas</Text>
-            <Text style={styles.emptySubtitle}>AÃºn no tienes mascotas registradas.</Text>
+            <Text style={styles.emptySubtitle}>Aun no tienes mascotas registradas.</Text>
           </View>
         }
         renderItem={({ item }) => {
@@ -135,7 +135,7 @@ export default function MisMascotas() {
                 {showBadge && <PendingSyncBadge />}
                 <Text style={styles.nombre}>{item.data.nombre}</Text>
                 <Text style={styles.sub}>
-                  {item.data.tipoAnimal} Â· {item.data.raza}
+                  {item.data.tipoAnimal} - {item.data.raza}
                 </Text>
                 <Text style={styles.sub}>
                   {formatearEdad(item.data.fechaNacimiento)} · {item.data.peso} kg

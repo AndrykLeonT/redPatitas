@@ -122,7 +122,7 @@ export default function EstadisticasScreen() {
       }
       setUsuarios(usersArr);
     } catch (e) {
-      console.error("Error cargando estadísticas:", e);
+      console.error("Error cargando estadisticas:", e);
     } finally {
       setIsLoading(false);
     }
@@ -181,7 +181,7 @@ export default function EstadisticasScreen() {
 
   return (
     <ScrollView style={styles.bg} contentContainerStyle={styles.content}>
-      <Text style={styles.pageTitle}>Estadísticas Globales</Text>
+      <Text style={styles.pageTitle}>Estadisticas Globales</Text>
 
       {/* Bar Chart — publicaciones por tipo */}
       <View style={styles.card}>
@@ -190,7 +190,7 @@ export default function EstadisticasScreen() {
         {publicaciones.length === 0 ? (
           <View style={styles.emptyChart}>
             <Ionicons name="bar-chart-outline" size={36} color={colors.textSecondary} />
-            <Text style={styles.emptyText}>Sin publicaciones todavía.</Text>
+            <Text style={styles.emptyText}>Sin publicaciones todavia.</Text>
           </View>
         ) : (
           <BarChart
@@ -246,18 +246,18 @@ export default function EstadisticasScreen() {
         )}
       </View>
 
-      {/* Scatter Chart — fotos vs. días hasta resolución */}
+      {/* Scatter Chart — fotos vs. dias hasta resolucion */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>Evidencia visual vs. resolución</Text>
+        <Text style={styles.cardTitle}>Evidencia visual vs. resolucion</Text>
         <Text style={styles.cardSub}>
-          Mascotas perdidas resueltas · Eje X: fotos · Eje Y: días hasta encontrarla
+          Mascotas perdidas resueltas · Eje X: fotos · Eje Y: dias hasta encontrarla
         </Text>
         {scatterData.length === 0 ? (
           <View style={styles.emptyChart}>
             <Ionicons name="analytics-outline" size={36} color={colors.textSecondary} />
-            <Text style={styles.emptyText}>Sin mascotas perdidas resueltas todavía.</Text>
+            <Text style={styles.emptyText}>Sin mascotas perdidas resueltas todavia.</Text>
             <Text style={styles.emptyHint}>
-              Usa &quot;Marcar como encontrado&quot; en una publicación de tipo Perdidos.
+              Usa &quot;Marcar como encontrado&quot; en una publicacion de tipo Perdidos.
             </Text>
           </View>
         ) : (

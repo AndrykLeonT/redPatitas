@@ -36,7 +36,7 @@ type PubItem = { id: string; data: Publicacion };
 const SCREEN_W = Dimensions.get("window").width;
 
 const TIPO_LABEL: Record<string, string> = {
-  reporte: "Reporte", perdidos: "Perdidos", recreacion: "RecreaciÃ³n",
+  reporte: "Reporte", perdidos: "Perdidos", recreacion: "Recreacion",
 };
 const TIPO_COLOR: Record<string, string> = {
   reporte: "#EF4444", perdidos: "#F59E0B", recreacion: "#10B981",
@@ -44,7 +44,7 @@ const TIPO_COLOR: Record<string, string> = {
 
 const PIE_COLORS = ["#FF8C42", "#4F6D7A", "#10B981", "#F59E0B", "#EF4444", "#6366F1"];
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-const DIAS = ["Dom", "Lun", "Mar", "MiÃ©", "Jue", "Vie", "SÃ¡b"];
+const DIAS = ["Dom", "Lun", "Mar", "Mie", "Jue", "Vie", "Sab"];
 
 const PREVIEW = 3;
 
@@ -74,7 +74,7 @@ export default function PerfilScreen() {
   const [mascotas, setMascotas] = useState<MascotaItem[]>([]);
   const [publicaciones, setPublicaciones] = useState<PubItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [periodo, setPeriodo] = useState<"semana" | "mes" | "aÃ±o">("semana");
+  const [periodo, setPeriodo] = useState<"semana" | "mes" | "ano">("semana");
   const [userRole, setUserRole] = useState<string | null>(null);
   const [adopciones, setAdopciones] = useState<{ id: string; data: Adopcion }[]>([]);
 
@@ -115,13 +115,13 @@ export default function PerfilScreen() {
         setAdopciones(adoptLocal);
       };
 
-      // Sin conexiÃ³n: solo SQLite
+      // Sin conexion: solo SQLite
       if (isConnected === false) {
         cargarDesdeLocal();
         return;
       }
 
-      // Con conexiÃ³n (o aÃºn sin determinar): Firebase primero, fallback a SQLite si falla
+      // Con conexion (o aun sin determinar): Firebase primero, fallback a SQLite si falla
       try {
         const [userSnap, mascSnap, pubSnap, adoptSnap] = await Promise.all([
           get(ref(db, `usuarios/${userId}`)),
@@ -175,10 +175,10 @@ export default function PerfilScreen() {
         }
         setAdopciones(adoptArr);
 
-        // Recalcular estadÃ­sticas con el snapshot fresco
+        // Recalcular estadisticas con el snapshot fresco
         recalcularYGuardarEstadisticas(userId);
       } catch (firebaseErr) {
-        console.warn("Firebase fallÃ³ al cargar perfil, fallback a SQLite", firebaseErr);
+        console.warn("Firebase fallo al cargar perfil, fallback a SQLite", firebaseErr);
         cargarDesdeLocal();
       }
     } catch (e) {
@@ -279,14 +279,14 @@ export default function PerfilScreen() {
   const eliminarCuenta = () => {
     if (isConnected === false) {
       Alert.alert(
-        "Sin conexiÃ³n",
-        "Eliminar tu cuenta requiere conexiÃ³n a internet.",
+        "Sin conexion",
+        "Eliminar tu cuenta requiere conexion a internet.",
       );
       return;
     }
     Alert.alert(
       "Eliminar cuenta",
-      "Se eliminarÃ¡n tu perfil, todas tus mascotas y publicaciones. Esta acciÃ³n no se puede deshacer.",
+      "Se eliminaran tu perfil, todas tus mascotas y publicaciones. Esta accion no se puede deshacer.",
       [
         { text: "Cancelar", style: "cancel" },
         {
@@ -422,7 +422,7 @@ export default function PerfilScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemTitle}>{item.data.nombre}</Text>
                 <Text style={styles.itemSub}>
-                  {item.data.tipoAnimal} Â· {item.data.raza} Â·{" "}
+                  {item.data.tipoAnimal} - {item.data.raza} -{" "}
                   {formatearEdad(item.data.fechaNacimiento)}
                 </Text>
               </View>
@@ -431,7 +431,7 @@ export default function PerfilScreen() {
           ))}
           {mascotas.length > PREVIEW && (
             <Pressable style={styles.verMasBtn} onPress={() => router.push("/(drawer)/misMascotas" as any)}>
-              <Text style={styles.verMasBtnText}>Ver {mascotas.length - PREVIEW} mÃ¡s â†’</Text>
+              <Text style={styles.verMasBtnText}>Ver {mascotas.length - PREVIEW} mas â†’</Text>
             </Pressable>
           )}
         </>
@@ -492,21 +492,21 @@ export default function PerfilScreen() {
           })}
           {publicaciones.length > PREVIEW && (
             <Pressable style={styles.verMasBtn} onPress={() => router.push("/(drawer)/misPublicaciones" as any)}>
-              <Text style={styles.verMasBtnText}>Ver {publicaciones.length - PREVIEW} mÃ¡s â†’</Text>
+              <Text style={styles.verMasBtnText}>Ver {publicaciones.length - PREVIEW} mas â†’</Text>
             </Pressable>
           )}
         </>
       )}
 
-      {/* EstadÃ­sticas */}
+      {/* Estadisticas */}
       <View style={[styles.sectionHeader, { marginTop: 8 }]}>
-        <Text style={styles.sectionTitle}>EstadÃ­sticas</Text>
+        <Text style={styles.sectionTitle}>Estadisticas</Text>
       </View>
 
-      {/* Pie Chart â€” distribuciÃ³n de mascotas */}
+      {/* Pie Chart â€” distribucion de mascotas */}
       {mascotas.length > 0 ? (
         <View style={styles.chartCard}>
-          <Text style={styles.chartTitle}>DistribuciÃ³n de mascotas</Text>
+          <Text style={styles.chartTitle}>Distribucion de mascotas</Text>
           <PieChart
             data={pieData}
             donut
@@ -540,7 +540,7 @@ export default function PerfilScreen() {
       ) : (
         <View style={styles.emptySection}>
           <Ionicons name="pie-chart-outline" size={36} color={colors.textSecondary} />
-          <Text style={styles.emptySectionText}>Registra mascotas para ver estadÃ­sticas.</Text>
+          <Text style={styles.emptySectionText}>Registra mascotas para ver estadisticas.</Text>
         </View>
       )}
 
@@ -548,14 +548,14 @@ export default function PerfilScreen() {
       <View style={styles.chartCard}>
         <Text style={styles.chartTitle}>Actividad de publicaciones</Text>
         <View style={styles.periodoRow}>
-          {(["semana", "mes", "aÃ±o"] as const).map((p) => (
+          {(["semana", "mes", "ano"] as const).map((p) => (
             <Pressable
               key={p}
               style={[styles.periodoChip, periodo === p && styles.periodoChipActivo]}
               onPress={() => setPeriodo(p)}
             >
               <Text style={[styles.periodoChipText, periodo === p && { color: colors.textInverse }]}>
-                {p === "semana" ? "Semana" : p === "mes" ? "Mes" : "AÃ±o"}
+                {p === "semana" ? "Semana" : p === "mes" ? "Mes" : "Ano"}
               </Text>
             </Pressable>
           ))}
@@ -601,12 +601,12 @@ export default function PerfilScreen() {
           {adopciones.length === 0 ? (
             <View style={styles.emptySection}>
               <Ionicons name="stats-chart-outline" size={36} color={colors.textSecondary} />
-              <Text style={styles.emptySectionText}>AÃºn no hay adopciones registradas.</Text>
+              <Text style={styles.emptySectionText}>Aun no hay adopciones registradas.</Text>
             </View>
           ) : (
             <>
               <View style={styles.chartCard}>
-                <Text style={styles.chartTitle}>Perros vs. Gatos adoptados (Ãºltimos 6 meses)</Text>
+                <Text style={styles.chartTitle}>Perros vs. Gatos adoptados (ultimos 6 meses)</Text>
                 <View style={[styles.pieLeyenda, { marginBottom: 14 }]}>
                   <View style={styles.pieLeyendaItem}>
                     <View style={[styles.pieLeyendaDot, { backgroundColor: "#FF8C42" }]} />
