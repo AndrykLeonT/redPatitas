@@ -10,6 +10,8 @@ export type TipoOperacion = 'CONSULTA' | 'INSERCION' | 'MODIFICACION' | 'ELIMINA
 class AuditoriaService {
   private currentTxId: number = 0;
   private initialized: boolean = false;
+  private writeQueue: Promise<void> = Promise.resolve();
+  private lastTxTime: number = 0;
 
   private async init() {
     if (this.initialized) return;
@@ -34,35 +36,45 @@ class AuditoriaService {
     operacion: TipoOperacion,
     resumen: string
   ): Promise<void> {
-    try {
-      await this.init();
-      
-      this.currentTxId += 1;
-      await AsyncStorage.setItem(TX_COUNTER_KEY, this.currentTxId.toString());
-
-      // Try to get current user info safely
-      let userInfo = '';
+    this.writeQueue = this.writeQueue.then(async () => {
       try {
-        const userId = await AsyncStorage.getItem('userId');
-        if (userId) {
-          const userRole = await AsyncStorage.getItem('userRole') || 'guest';
-          userInfo = ` [User:${userId}|${userRole}]`;
+        await this.init();
+        
+        const now = Date.now();
+        // Si han pasado más de 1000ms desde el último registro, incrementamos el ID.
+        // Si no, comparten el mismo ID porque ocurren "al mismo tiempo" (en bloque).
+        if (now - this.lastTxTime > 1000) {
+          this.currentTxId += 1;
+          await AsyncStorage.setItem(TX_COUNTER_KEY, this.currentTxId.toString());
         }
-      } catch (e) {}
+        this.lastTxTime = now;
 
-      const fecha = new Date().toISOString();
-      const linea = `[${this.currentTxId}] | [${fecha}] | [${almacenamiento}] | [${operacion}] | [${resumen}]${userInfo}\n`;
+        // Try to get current user info safely
+        let userInfo = '';
+        try {
+          const userId = await AsyncStorage.getItem('userId');
+          if (userId) {
+            const userRole = await AsyncStorage.getItem('userRole') || 'guest';
+            userInfo = ` [User:${userId}|${userRole}]`;
+          }
+        } catch (e) {}
 
-      let content = '';
-      const info = await FileSystem.getInfoAsync(BITACORA_FILE);
-      if (info.exists) {
-        content = await FileSystem.readAsStringAsync(BITACORA_FILE, { encoding: FileSystem.EncodingType.UTF8 });
+        const fecha = new Date(now).toISOString();
+        const linea = `[${this.currentTxId}] | [${fecha}] | [${almacenamiento}] | [${operacion}] | [${resumen}]${userInfo}\n`;
+
+        let content = '';
+        const info = await FileSystem.getInfoAsync(BITACORA_FILE);
+        if (info.exists) {
+          content = await FileSystem.readAsStringAsync(BITACORA_FILE, { encoding: FileSystem.EncodingType.UTF8 });
+        }
+        content += linea;
+        await FileSystem.writeAsStringAsync(BITACORA_FILE, content, { encoding: FileSystem.EncodingType.UTF8 });
+      } catch (error) {
+        // Ignorar de forma silenciosa para no romper la app principal
       }
-      content += linea;
-      await FileSystem.writeAsStringAsync(BITACORA_FILE, content, { encoding: FileSystem.EncodingType.UTF8 });
-    } catch (error) {
-      // Ignorar de forma silenciosa para no romper la app principal (BDD requirement)
-    }
+    });
+
+    return this.writeQueue;
   }
 
   async leerBitacora(): Promise<string> {
